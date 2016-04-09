@@ -8,71 +8,322 @@
 </div>
 
 <div class="row">
-    <div id="map" style="height:700px; width: 100%;"></div>
-    <script>
+    <div id="map" style="height: 700px; width: 100%;"></div>
+</div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="locationModal" tabindex="-1" role="dialog" aria-labelledby="locationModalLabel">
+    <div class="modal-dialog" role="form">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">Set Location Details</h4>
+            </div>
+            <div class="modal-body">
+                <!--Location Type-->
+                <form id="locationForm">
+                    <div class="form-group">
+                        <label for="locationTitle">Location Title</label>
+                        <input type="text" class="form-control" id="locationTitle" placeholder="Location Title">
+                    </div>
+                    <div class="form-group">
+                        <label for="locationType">Location Type</label>
+                        <select id="locationType" class="form-control">
+                            <option value="user">User Location</option>
+                            <option value="cloud">Cloud Data Center Location</option>
+                        </select>
+                    </div>
+                </form>
+                <!--Common Params-->
+                <form id="commonForm">
+                    <div class="form-group">
+                        <label for="cpuCount">CPU Count</label>
+                        <input type="text" class="form-control" id="cpuCount" placeholder="CPU Count">
+                    </div>
+                    <div class="form-group">
+                        <label for="memorySize">Memory Size (GB)</label>
+                        <input type="text" class="form-control" id="memorySize" placeholder="Memory Size (GB)">
+                    </div>
+                    <div class="form-group">
+                        <label for="networkBandwidth">Network Bandwidth (MB/sec)</label>
+                        <input type="text" class="form-control" id="networkBandwidth" placeholder="Network Bandwidth (MB/sec)">
+                    </div>
+                    <div class="form-group">
+                        <label for="externalNetworkBandwidth">External Network Bandwidth (MB/sec)</label>
+                        <input type="text" class="form-control" id="externalNetworkBandwidth" placeholder="Extrnal Network Bandwidth (MB/sec)">
+                    </div>
+                </form>
+                <!--Cloud Costs-->
+                <form id="cloudForm">
+                    <div class="form-group">
+                        <label for="cpuCost">CPU Unit Cost Per Hour (QAR)</label>
+                        <input type="text" class="form-control" id="cpuCost" placeholder="CPU Unit Cost Per Hour (QAR)">
+                    </div>
+                    <div class="form-group">
+                        <label for="memoryCost">Memory Unit Cost Per Hour (QAR)</label>
+                        <input type="text" class="form-control" id="memoryCost" placeholder="Memory Unit Cost Per Hour">
+                    </div>
+                    <div class="form-group">
+                        <label for="networkCost">Network Unit Cost Per Hour (QAR)</label>
+                        <input type="text" class="form-control" id="networkCost" placeholder="Network Unit Cost Per Hour">
+                    </div>
+                </form>
+                <!--User Thresholds-->
+                <form id="thresholdForm">
+                    <div class="form-group">
+                        <label for="distanceThreshold">Distance Threshold (km)</label>
+                        <input type="text" class="form-control" id="distanceThreshold" placeholder="Distance Threshold (km)">
+                    </div>
+                    <div class="form-group">
+                        <label for="costThreshold">Cost Threshold (QAR)</label>
+                        <input type="text" class="form-control" id="costThreshold" placeholder="Cost Threshold (QAR)">
+                    </div>
+                    @*<div class="form-group"> <!--No Need of this as External Bandwidth requirement is a Common Requirement for User & Data Center-->
+                        <label for="bandwidthThreshold">Bandwidth Threshold (MB/Sec)</label>
+                        <input type="text" class="form-control" id="bandwidthThreshold" placeholder="Bandwidth Threshold (MB/Sec)">
+                    </div>*@
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="setMarker(eventData);">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section scripts {
+    <script type="text/javascript">
+        //Network Bandwidth === Bandwidth within cloud
+        //User Bandwidth || Bandwidth Threshold === Bandwidth accessible to User
         var map;
+        var centerMapDubai = { lat: 24.95, lng: 55.333333 };
         var centerMapQatar = { lat: 25.27932000, lng: 51.52245000 };
+        var centerMap = centerMapDubai;
+        var connectStartPoint;
+        var connectEndPoint;
+        var eventData;
 
-      
-      /* *
-        * The CenterControl adds a control to the map that recenters the map on
-        * Chicago.
-        * This constructor takes the control DIV as an argument. * constructor
-      */
+        $('#cloudForm').hide();
+        //$('#thresholdForm').hide(); //By Default its the user Threshold Form
 
-      function CenterControl(controlDiv, map) {
+        /* *
+          * The CenterControl adds a control to the map that recenters the map on
+          * The Center Map Location provided.
+          * This constructor takes the control DIV as an argument. * constructor
+        */
 
-          // Set CSS for the control border.
-          var controlUI = document.createElement('div');
-          controlUI.style.backgroundColor = '#fff';
-          controlUI.style.border = '2px solid #fff';
-          controlUI.style.borderRadius = '3px';
-          controlUI.style.boxShadow = '0 2px 6px rgba(0,0,0,.3)';
-          controlUI.style.cursor = 'pointer';
-          controlUI.style.marginBottom = '22px';
-          controlUI.style.textAlign = 'center';
-          controlUI.title = 'Click to recenter the map';
-          controlDiv.appendChild(controlUI);
+        function CenterControl(controlDiv, map) {
 
-          // Set CSS for the control interior.
-          var controlText = document.createElement('div');
-          controlText.style.color = 'rgb(25,25,25)';
-          controlText.style.fontFamily = 'Roboto,Arial,sans-serif';
-          controlText.style.fontSize = '16px';
-          controlText.style.lineHeight = '38px';
-          controlText.style.paddingLeft = '5px';
-          controlText.style.paddingRight = '5px';
-          controlText.innerHTML = 'Center To Qatar';
-          controlUI.appendChild(controlText);
+            // Set CSS for the control border.
+            var controlUI = document.createElement('div');
+            controlUI.style.backgroundColor = '#fff';
+            controlUI.style.border = '2px solid #fff';
+            controlUI.style.borderRadius = '3px';
+            controlUI.style.boxShadow = '0 2px 6px rgba(0,0,0,.3)';
+            controlUI.style.cursor = 'pointer';
+            controlUI.style.marginBottom = '22px';
+            controlUI.style.textAlign = 'center';
+            controlUI.title = 'Click to recenter the map';
+            controlDiv.appendChild(controlUI);
 
-          // Setup the click event listeners: simply set the map to Chicago.
-          controlUI.addEventListener('click', function () {
-              map.setCenter(centerMapQatar);
-          });
+            // Set CSS for the control interior.
+            var controlText = document.createElement('div');
+            controlText.style.color = 'rgb(25,25,25)';
+            controlText.style.fontFamily = 'Roboto,Arial,sans-serif';
+            controlText.style.fontSize = '16px';
+            controlText.style.lineHeight = '38px';
+            controlText.style.paddingLeft = '5px';
+            controlText.style.paddingRight = '5px';
+            controlText.innerHTML = 'Center To Qatar';
+            controlUI.appendChild(controlText);
 
-      }
+            // Setup the click event listeners: simply set the map to Chicago.
+            controlUI.addEventListener('click', function () {
+                map.setCenter(centerMap);
+            });
 
-
-      function initMap() {
-          map = new google.maps.Map(document.getElementById('map'), {
-              center: centerMapQatar,
-              zoom: 5
-          });
-
-          // Create the DIV to hold the control and call the CenterControl()
-          // constructor passing in this DIV.
-          var centerControlDiv = document.createElement('div');
-          var centerControl = new CenterControl(centerControlDiv, map);
-
-          centerControlDiv.index = 1;
-          map.controls[google.maps.ControlPosition.TOP_CENTER].push(centerControlDiv);
-
-      }
+        }
 
 
-      
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: centerMap,
+                zoom: 6
+            });
+
+            // Create the DIV to hold the control and call the CenterControl()
+            // constructor passing in this DIV.
+            var centerControlDiv = document.createElement('div');
+            var centerControl = new CenterControl(centerControlDiv, map);
+
+            centerControlDiv.index = 1;
+            map.controls[google.maps.ControlPosition.TOP_CENTER].push(centerControlDiv);
+
+
+            map.addListener('click', function (event) {
+                $('#locationModal').modal('show');
+                eventData = event;
+            });
+
+
+        }
+
+        function setMarker(event) {
+            var locationTitle = $('#locationTitle').val();
+            var locationType = $('#locationType').val();
+
+            var cpuCount = $('#cpuCount').val();
+            var memorySize = $('#memorySize').val();
+            var networkBandwidth = $('#networkBandwidth').val();
+            var externalNetworkBandwidth = $('#externalNetworkBandwidth').val();
+
+            var cpuCost = $('#cpuCost').val();
+            var memoryCost = $('#memoryCost').val();
+            var networkCost = $('#networkCost').val();
+
+            var distanceThreshold = $('#distanceThreshold').val();
+            var costThreshold = $('#costThreshold').val();
+            
+
+
+            $('#locationTitle').val(null);
+            $('#cpuCount').val(null);
+            $('#cpuCost').val(null);
+            $('#memorySize').val(null);
+            $('#memoryCost').val(null);
+            $('#networkBandwidth').val(null);
+            $('#networkCost').val(null);
+            $('#distanceThreshold').val(null);
+            $('#costThreshold').val(null);
+            $('#externalNetworkBandwidth').val(null);
+
+
+            var marker = new google.maps.Marker({
+                position: event.latLng,
+                map: map,
+                title: locationTitle
+            });
+
+            var dataCenterSizeCircle = new google.maps.Circle({
+                strokeColor: '#00FF00',
+                strokeOpacity: 0.8,
+                strokeWeight: 2,
+                fillColor: locationType === "cloud" ? '#0000FF' : '#00FF00',
+                fillOpacity: 0.35,
+                map: map,
+                center: event.latLng,
+                radius: Math.log(cpuCount + memorySize) * 500
+            });
+
+
+            var markerContextMenu = new ContextMenu(map, markerContextMenuOptions);
+
+            google.maps.event.addListener(markerContextMenu, 'menu_item_selected',
+                function (latLng, eventName, source) {
+                    switch (eventName) {
+                    case 'menu_delete_clicked':
+
+                        markerContextMenu.hide();
+                        marker.setMap(null);
+                        marker = null;
+                        console.log("Marker Deleted!");
+
+                        dataCenterSizeCircle.setMap(null);
+                        // do something
+                        break;
+                    case 'menu_connect_clicked':
+                        // do something else
+                        markerContextMenu.hide();
+                        console.log("Select Endpoint!");
+                        connectStartPoint = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() }
+                        console.log("StartPoint: ", connectStartPoint.lat, connectStartPoint.lng);
+                        break;
+                    default:
+                        // freak out
+                        break;
+                    }
+                });
+
+            marker.addListener('rightclick', function (mouseEvent) {
+                markerContextMenu.show(mouseEvent.latLng, map);
+            });
+
+            marker.addListener('click', function (mouseEvent) {
+                if (connectStartPoint != null) {
+                    connectEndPoint = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() }
+                    console.log("EndPoint: ", connectEndPoint.lat, connectEndPoint.lng);
+
+                    var distance = google.maps.geometry.spherical.computeDistanceBetween(
+                        new google.maps.LatLng(connectStartPoint.lat, connectStartPoint.lng),
+                        new google.maps.LatLng(connectEndPoint.lat, connectEndPoint.lng));
+
+                    console.log("Distance: ", distance / 1000, "km");
+
+                    var connection = new google.maps.Polyline({
+                        path: [new google.maps.LatLng(connectStartPoint.lat, connectStartPoint.lng), new google.maps.LatLng(connectEndPoint.lat, connectEndPoint.lng)],
+                        geodesic: true,
+                        strokeColor: '#0000FF',
+                        strokeOpacity: 1.0,
+                        strokeWeight: 2
+                    });
+
+                    connection.setMap(map);
+
+
+                    connectStartPoint = null;
+                    connectEndPoint = null;
+                }
+            });
+
+
+            $('#locationModal').modal('hide');
+        }
+
+
+        $(function() {
+            $('#locationType').change(function() {
+                if ($(this).val() === "user") {
+                    $('#cloudForm').hide();
+                    $('#thresholdForm').show();
+                }
+                if ($(this).val() === "cloud") {
+                    $('#cloudForm').show();
+                    $('#thresholdForm').hide();
+                }
+            });
+        });
 
     </script>
-    <script src="http://maps.googleapis.com/maps/api/js?v=3&key=AIzaSyCv1wLOZxBKqjcE0oqmny3SZ3NWn45oCW8&callback=initMap" async defer></script>
+    <script src="http://maps.googleapis.com/maps/api/js?v=3&key=AIzaSyCv1wLOZxBKqjcE0oqmny3SZ3NWn45oCW8&libraries=geometry&callback=initMap"></script>
+    <script src="../../Scripts/map/context-menu.js"></script>
+    <script src="../../Scripts/map/map-context-menu-init.js"></script>
+    <script src="../../Scripts/map/marker-context-menu-init.js"></script>
 
-</div>
+    <script type="text/javascript">
+        //var mapContextMenu = new ContextMenu(map, mapContextMenuOptions);
+
+        //google.maps.event.addListener(mapContextMenu, 'menu_item_selected',
+        //    function (latLng, eventName, source) {
+        //        switch (eventName) {
+        //            case 'option1_clicked':
+        //                // do something
+        //                break;
+        //            case 'option2_clicked':
+        //                // do something else
+        //                break;
+        //            default:
+        //                // freak out
+        //                break;
+        //        }
+        //    });
+
+        //google.maps.event.addListener(map, 'rightclick', function (mouseEvent) {
+        //    mapContextMenu.show(mouseEvent.latLng, map);
+        //});
+
+    </script>
+
+}
