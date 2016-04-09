@@ -104,7 +104,11 @@
         var centerMap = centerMapDubai;
         var connectStartPoint;
         var connectEndPoint;
+        var connectCloudId;
+        var connectUserId;
         var eventData;
+        var userIdCounter = 0;
+        var cloudIdCounter = 0;
 
         $('#cloudForm').hide();
         //$('#thresholdForm').hide(); //By Default its the user Threshold Form
@@ -137,7 +141,7 @@
             controlText.style.lineHeight = '38px';
             controlText.style.paddingLeft = '5px';
             controlText.style.paddingRight = '5px';
-            controlText.innerHTML = 'Center To Qatar';
+            controlText.innerHTML = 'Center To Origin';
             controlUI.appendChild(controlText);
 
             // Setup the click event listeners: simply set the map to Chicago.
@@ -218,6 +222,45 @@
                 radius: Math.log(cpuCount + memorySize) * 500
             });
 
+            if (locationType === "cloud") {
+                var cloudSpecfications = {
+                    "cloudId" : cloudIdCounter,
+                    "locationTitle" : locationTitle,
+                    "locationType" : locationType,
+
+                    "cpuCount": cpuCount,
+                    "memorySize" : memorySize,
+                    "networkBandwidth" : networkBandwidth,
+                    "externalNetworkBandwidth" : externalNetworkBandwidth,
+
+                    "cpuCost" : cpuCost,
+                    "memoryCost"  : memoryCost,
+                    "networkCost" : networkCost
+
+                };
+                appendItem("cloudSpecifications", cloudSpecfications);
+                marker.cloudId = cloudIdCounter;
+                cloudIdCounter++;
+            } else {
+                var userSpecfications = {
+                    "userId" : userIdCounter,
+                    "locationTitle": locationTitle,
+                    "locationType": locationType,
+
+                    "cpuCount": cpuCount,
+                    "memorySize": memorySize,
+                    "networkBandwidth": networkBandwidth,
+                    "externalNetworkBandwidth": externalNetworkBandwidth,
+
+                    "costThreshold": costThreshold,
+                    "distanceThreshold": distanceThreshold
+                };
+                appendItem("userRequirements", userSpecfications);
+                marker.userId = userIdCounter;
+                userIdCounter++;
+            }
+            
+
 
             var markerContextMenu = new ContextMenu(map, markerContextMenuOptions);
 
@@ -239,6 +282,11 @@
                         markerContextMenu.hide();
                         console.log("Select Endpoint!");
                         connectStartPoint = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() }
+                        if (marker.cloudId != null) {
+                            connectCloudId = marker.cloudId;
+                        } else if (marker.userId != null) {
+                            connectUserId = marker.userId;
+                        }
                         console.log("StartPoint: ", connectStartPoint.lat, connectStartPoint.lng);
                         break;
                     default:
@@ -255,6 +303,11 @@
                 if (connectStartPoint != null) {
                     connectEndPoint = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() }
                     console.log("EndPoint: ", connectEndPoint.lat, connectEndPoint.lng);
+                    if (marker.cloudId != null) {
+                        connectCloudId = marker.cloudId;
+                    } else if (marker.userId != null) {
+                        connectUserId = marker.userId;
+                    }
 
                     var distance = google.maps.geometry.spherical.computeDistanceBetween(
                         new google.maps.LatLng(connectStartPoint.lat, connectStartPoint.lng),
@@ -269,6 +322,13 @@
                         strokeOpacity: 1.0,
                         strokeWeight: 2
                     });
+
+                    var connectionSpecification = {
+                        "cloudId" : connectCloudId,
+                        "userId" : connectUserId,
+                        "distance" : distance
+                    }
+                    appendItem("connections", connectionSpecification);
 
                     connection.setMap(map);
 
@@ -296,6 +356,16 @@
             });
         });
 
+
+
+        function appendItem(key, item) {
+            var itemArray = [];
+            if (localStorage.getItem(key) != null) {
+                itemArray = JSON.parse(localStorage.getItem(key));
+            }
+            itemArray.push(item);
+            localStorage.setItem(key, JSON.stringify(itemArray));
+        }
     </script>
     <script src="http://maps.googleapis.com/maps/api/js?v=3&key=AIzaSyCv1wLOZxBKqjcE0oqmny3SZ3NWn45oCW8&libraries=geometry&callback=initMap"></script>
     <script src="../../Scripts/map/context-menu.js"></script>
