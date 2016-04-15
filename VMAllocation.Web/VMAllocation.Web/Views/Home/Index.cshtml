@@ -6,7 +6,21 @@
     <h1>VM Automatic Allocation</h1>
     <p class="lead">Virtual Machine Allocation Automation in Clouds Simulation</p>
 </div>
-
+<div class="row">
+    <div class="text-center">
+        @using (Html.BeginForm("ProcessTopology", "Home", FormMethod.Post, new { id = "dataForm", @class = "" }))
+        {
+            @*<input type="hidden" name="CloudSpecifications" id="hidCloudSpecifications"/>
+            <input type="hidden" name="UserRequirements" id="hidUserRequirements"/>
+            <input type="hidden" name="Connections" id="hidConnections"/>*@
+            <input type="hidden" name="model" id="hidModel" />
+            <button class="btn btn-danger" onclick="resetMap();" type="button">Clear Local Storage</button>
+            <button class="btn btn-success" onclick="sendData();" type="submit">Process Topology</button>
+        }
+        
+    </div>
+</div>
+<br/>
 <div class="row">
     <div id="map" style="height: 700px; width: 100%;"></div>
 </div>
@@ -39,45 +53,45 @@
                 <form id="commonForm">
                     <div class="form-group">
                         <label for="cpuCount">CPU Count</label>
-                        <input type="text" class="form-control" id="cpuCount" placeholder="CPU Count">
+                        <input type="text" class="form-control" id="cpuCount" placeholder="CPU Count" value="10000">
                     </div>
                     <div class="form-group">
                         <label for="memorySize">Memory Size (GB)</label>
-                        <input type="text" class="form-control" id="memorySize" placeholder="Memory Size (GB)">
+                        <input type="text" class="form-control" id="memorySize" placeholder="Memory Size (GB)" value="160000">
                     </div>
                     <div class="form-group">
                         <label for="networkBandwidth">Network Bandwidth (MB/sec)</label>
-                        <input type="text" class="form-control" id="networkBandwidth" placeholder="Network Bandwidth (MB/sec)">
+                        <input type="text" class="form-control" id="networkBandwidth" placeholder="Network Bandwidth (MB/sec)" value="1000">
                     </div>
                     <div class="form-group">
                         <label for="externalNetworkBandwidth">External Network Bandwidth (MB/sec)</label>
-                        <input type="text" class="form-control" id="externalNetworkBandwidth" placeholder="Extrnal Network Bandwidth (MB/sec)">
+                        <input type="text" class="form-control" id="externalNetworkBandwidth" placeholder="Extrnal Network Bandwidth (MB/sec)" value="1000">
                     </div>
                 </form>
                 <!--Cloud Costs-->
                 <form id="cloudForm">
                     <div class="form-group">
                         <label for="cpuCost">CPU Unit Cost Per Hour (QAR)</label>
-                        <input type="text" class="form-control" id="cpuCost" placeholder="CPU Unit Cost Per Hour (QAR)">
+                        <input type="text" class="form-control" id="cpuCost" placeholder="CPU Unit Cost Per Hour (QAR)" value="1">
                     </div>
                     <div class="form-group">
                         <label for="memoryCost">Memory Unit Cost Per Hour (QAR)</label>
-                        <input type="text" class="form-control" id="memoryCost" placeholder="Memory Unit Cost Per Hour">
+                        <input type="text" class="form-control" id="memoryCost" placeholder="Memory Unit Cost Per Hour" value="1">
                     </div>
                     <div class="form-group">
                         <label for="networkCost">Network Unit Cost Per Hour (QAR)</label>
-                        <input type="text" class="form-control" id="networkCost" placeholder="Network Unit Cost Per Hour">
+                        <input type="text" class="form-control" id="networkCost" placeholder="Network Unit Cost Per Hour" value="1">
                     </div>
                 </form>
                 <!--User Thresholds-->
                 <form id="thresholdForm">
                     <div class="form-group">
                         <label for="distanceThreshold">Distance Threshold (km)</label>
-                        <input type="text" class="form-control" id="distanceThreshold" placeholder="Distance Threshold (km)">
+                        <input type="text" class="form-control" id="distanceThreshold" placeholder="Distance Threshold (km)" value="1000">
                     </div>
                     <div class="form-group">
                         <label for="costThreshold">Cost Threshold (QAR)</label>
-                        <input type="text" class="form-control" id="costThreshold" placeholder="Cost Threshold (QAR)">
+                        <input type="text" class="form-control" id="costThreshold" placeholder="Cost Threshold (QAR)" value="10000">
                     </div>
                     @*<div class="form-group"> <!--No Need of this as External Bandwidth requirement is a Common Requirement for User & Data Center-->
                         <label for="bandwidthThreshold">Bandwidth Threshold (MB/Sec)</label>
@@ -87,7 +101,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="setMarker(eventData);">Save changes</button>
+                <button type="button" class="btn btn-primary" onclick="setRequirements(eventData);">Save changes</button>
             </div>
         </div>
     </div>
@@ -109,8 +123,13 @@
         var eventData;
         var userIdCounter = 0;
         var cloudIdCounter = 0;
+        var markers = [];
+        var dataCenterSizecircles = [];
+        var connections = [];
+        var connectionStartMarker;
 
         $('#cloudForm').hide();
+
         //$('#thresholdForm').hide(); //By Default its the user Threshold Form
 
         /* *
@@ -145,7 +164,7 @@
             controlUI.appendChild(controlText);
 
             // Setup the click event listeners: simply set the map to Chicago.
-            controlUI.addEventListener('click', function () {
+            controlUI.addEventListener('click', function() {
                 map.setCenter(centerMap);
             });
 
@@ -167,7 +186,7 @@
             map.controls[google.maps.ControlPosition.TOP_CENTER].push(centerControlDiv);
 
 
-            map.addListener('click', function (event) {
+            map.addListener('click', function(event) {
                 $('#locationModal').modal('show');
                 eventData = event;
             });
@@ -175,7 +194,11 @@
 
         }
 
-        function setMarker(event) {
+        $(function() {
+            loadMapFromLocalStorage();
+        });
+
+        function setRequirements(event) {
             var locationTitle = $('#locationTitle').val();
             var locationType = $('#locationType').val();
 
@@ -190,82 +213,97 @@
 
             var distanceThreshold = $('#distanceThreshold').val();
             var costThreshold = $('#costThreshold').val();
-            
+
+            var location = event.latLng;
+
+            var cloudId;
+            var userId;
+
+            if (locationType === "cloud") {
+                cloudId = cloudIdCounter;
+            } else if (locationType === "user") {
+                userId = userIdCounter;
+            }
 
 
             $('#locationTitle').val(null);
-            $('#cpuCount').val(null);
-            $('#cpuCost').val(null);
-            $('#memorySize').val(null);
-            $('#memoryCost').val(null);
-            $('#networkBandwidth').val(null);
-            $('#networkCost').val(null);
-            $('#distanceThreshold').val(null);
-            $('#costThreshold').val(null);
-            $('#externalNetworkBandwidth').val(null);
+            $('#cpuCount').val(10000);
+            $('#cpuCost').val(1);
+            $('#memorySize').val(160000);
+            $('#memoryCost').val(1);
+            $('#networkBandwidth').val(1000);
+            $('#networkCost').val(1);
+            $('#distanceThreshold').val(1000);
+            $('#costThreshold').val(10000);
+            $('#externalNetworkBandwidth').val(1000);
 
+            var values = {
+                locationTitle,
+                locationType,
+                cpuCount,
+                memorySize,
+                networkBandwidth,
+                externalNetworkBandwidth,
+                cpuCost,
+                memoryCost,
+                networkCost,
+                distanceThreshold,
+                costThreshold,
+                location,
+                cloudId,
+                userId
+            }
+
+            if (values.locationType === "cloud") {
+                var cloudSpecfications = values;
+                appendItem("cloudSpecifications", cloudSpecfications);
+                //marker.cloudId = cloudIdCounter;
+                //cloudIdCounter++;
+            } else {
+                var userSpecfications = values;
+                appendItem("userRequirements", userSpecfications);
+                //marker.userId = userIdCounter;
+                //userIdCounter++;
+            }
+
+            setMarker(values);
+        }
+
+        function setMarker(values) {
 
             var marker = new google.maps.Marker({
-                position: event.latLng,
+                position: values.location,
+                //position: event.latLng,
                 map: map,
-                title: locationTitle
+                title: values.locationTitle
             });
 
             var dataCenterSizeCircle = new google.maps.Circle({
                 strokeColor: '#00FF00',
                 strokeOpacity: 0.8,
                 strokeWeight: 2,
-                fillColor: locationType === "cloud" ? '#0000FF' : '#00FF00',
+                fillColor: values.locationType === "cloud" ? '#0000FF' : '#00FF00',
                 fillOpacity: 0.35,
                 map: map,
-                center: event.latLng,
-                radius: Math.log(cpuCount + memorySize) * 500
+                //center: event.latLng,
+                center: values.location,
+                radius: Math.log(values.cpuCount + values.memorySize) * 5000
             });
 
-            if (locationType === "cloud") {
-                var cloudSpecfications = {
-                    "cloudId" : cloudIdCounter,
-                    "locationTitle" : locationTitle,
-                    "locationType" : locationType,
-
-                    "cpuCount": cpuCount,
-                    "memorySize" : memorySize,
-                    "networkBandwidth" : networkBandwidth,
-                    "externalNetworkBandwidth" : externalNetworkBandwidth,
-
-                    "cpuCost" : cpuCost,
-                    "memoryCost"  : memoryCost,
-                    "networkCost" : networkCost
-
-                };
-                appendItem("cloudSpecifications", cloudSpecfications);
+            
+            //Original Place of persistence to localstorage
+            if (values.locationType === "cloud") {
                 marker.cloudId = cloudIdCounter;
                 cloudIdCounter++;
             } else {
-                var userSpecfications = {
-                    "userId" : userIdCounter,
-                    "locationTitle": locationTitle,
-                    "locationType": locationType,
-
-                    "cpuCount": cpuCount,
-                    "memorySize": memorySize,
-                    "networkBandwidth": networkBandwidth,
-                    "externalNetworkBandwidth": externalNetworkBandwidth,
-
-                    "costThreshold": costThreshold,
-                    "distanceThreshold": distanceThreshold
-                };
-                appendItem("userRequirements", userSpecfications);
                 marker.userId = userIdCounter;
                 userIdCounter++;
             }
-            
-
 
             var markerContextMenu = new ContextMenu(map, markerContextMenuOptions);
 
             google.maps.event.addListener(markerContextMenu, 'menu_item_selected',
-                function (latLng, eventName, source) {
+                function(latLng, eventName, source) {
                     switch (eventName) {
                     case 'menu_delete_clicked':
 
@@ -275,6 +313,12 @@
                         console.log("Marker Deleted!");
 
                         dataCenterSizeCircle.setMap(null);
+
+                        if (marker.cloudId != null) {
+                            removeMarker("cloudSpecifications", marker.cloudId);
+                        } else if (marker.userId != null) {
+                            removeMarker("userRequirements", marker.userId);
+                        }
                         // do something
                         break;
                     case 'menu_connect_clicked':
@@ -287,6 +331,7 @@
                         } else if (marker.userId != null) {
                             connectUserId = marker.userId;
                         }
+                        connectionStartMarker = marker;
                         console.log("StartPoint: ", connectStartPoint.lat, connectStartPoint.lng);
                         break;
                     default:
@@ -295,53 +340,111 @@
                     }
                 });
 
-            marker.addListener('rightclick', function (mouseEvent) {
+            marker.addListener('rightclick', function(mouseEvent) {
                 markerContextMenu.show(mouseEvent.latLng, map);
             });
 
             marker.addListener('click', function (mouseEvent) {
+                var cloudMarker = null;
+                var userMarker = null;
                 if (connectStartPoint != null) {
                     connectEndPoint = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() }
                     console.log("EndPoint: ", connectEndPoint.lat, connectEndPoint.lng);
+
+                    console.log("marker", marker);
                     if (marker.cloudId != null) {
-                        connectCloudId = marker.cloudId;
-                    } else if (marker.userId != null) {
-                        connectUserId = marker.userId;
+                        //connectCloudId = marker.cloudId;
+                        cloudMarker = marker;
+                        cloudMarker.location = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() };
+                    } else {
+                        //connectUserId = marker.userId;
+                        userMarker = marker;
+                        userMarker.location = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() };
+                    }
+                    console.log("connectionStartMarker", connectionStartMarker);
+                    if (connectionStartMarker.cloudId != null) {
+                        //connectCloudId = marker.cloudId;
+                        cloudMarker = connectionStartMarker;
+                        cloudMarker.location = { lat: connectionStartMarker.getPosition().lat(), lng: connectionStartMarker.getPosition().lng() };
+                    } else{
+                        //connectUserId = marker.userId;
+                        userMarker = connectionStartMarker;
+                        userMarker.location = { lat: connectionStartMarker.getPosition().lat(), lng: connectionStartMarker.getPosition().lng() };
                     }
 
-                    var distance = google.maps.geometry.spherical.computeDistanceBetween(
-                        new google.maps.LatLng(connectStartPoint.lat, connectStartPoint.lng),
-                        new google.maps.LatLng(connectEndPoint.lat, connectEndPoint.lng));
-
-                    console.log("Distance: ", distance / 1000, "km");
-
-                    var connection = new google.maps.Polyline({
-                        path: [new google.maps.LatLng(connectStartPoint.lat, connectStartPoint.lng), new google.maps.LatLng(connectEndPoint.lat, connectEndPoint.lng)],
-                        geodesic: true,
-                        strokeColor: '#0000FF',
-                        strokeOpacity: 1.0,
-                        strokeWeight: 2
-                    });
-
-                    var connectionSpecification = {
-                        "cloudId" : connectCloudId,
-                        "userId" : connectUserId,
-                        "distance" : distance
-                    }
-                    appendItem("connections", connectionSpecification);
-
-                    connection.setMap(map);
-
-
-                    connectStartPoint = null;
-                    connectEndPoint = null;
+                    //setConnection(mouseEvent, cloudMarker, userMarker);
+                    setConnection(cloudMarker, userMarker);
                 }
             });
 
+            markers.push(marker);
+            dataCenterSizecircles.push(dataCenterSizeCircle);
 
             $('#locationModal').modal('hide');
         }
 
+        function setConnection(cloudMarker, userMarker) {
+            if (userMarker == null || cloudMarker == null) {
+                console.error("Only User to Cloud Link is supported for now");
+                //connectUserId = null;
+                //connectCloudId = null;
+                return;
+            }
+
+            console.log("cloud marker: ", cloudMarker);
+            console.log("user marker: ", userMarker);
+
+            var distance = google.maps.geometry.spherical.computeDistanceBetween(
+                    new google.maps.LatLng(cloudMarker.location.lat, cloudMarker.location.lng),
+                    new google.maps.LatLng(userMarker.location.lat, userMarker.location.lng));
+
+            console.log("Distance: ", distance / 1000, "km");
+
+            var connection = new google.maps.Polyline({
+                path: [new google.maps.LatLng(cloudMarker.location.lat, cloudMarker.location.lng),
+                        new google.maps.LatLng(userMarker.location.lat, userMarker.location.lng)],
+                geodesic: true,
+                strokeColor: '#0000FF',
+                strokeOpacity: 0.5,
+                strokeWeight: 7
+            });
+
+            connection.cloudId = cloudMarker.cloudId;
+            connection.userId = userMarker.userId;
+
+
+            var connectionSpecification = {
+                "cloudId": cloudMarker.cloudId,
+                "userId": userMarker.userId,
+                "distance": distance
+            }
+            appendItem("connections", connectionSpecification);
+
+
+            var connectionContextMenu = new ContextMenu(map, connectionContextMenuOptions);
+            google.maps.event.addListener(connectionContextMenu, 'menu_item_selected',
+                function(latLng, eventName, source) {
+                    switch (eventName) {
+                    case 'connection_delete_clicked':
+
+                        connectionContextMenu.hide();
+                        connection.setMap(null);
+                        removeConnection("connections", connection.cloudId, connection.userId);
+                        connection = null;
+                        console.log("Connection Deleted!");
+                        break;
+                    default:
+                        // freak out
+                        break;
+                    }
+                });
+            connection.addListener('rightclick', function(mouseEvent) {
+                connectionContextMenu.show(mouseEvent.latLng, map);
+            });
+            connection.setMap(map);
+
+            connections.push(connection);
+        }
 
         $(function() {
             $('#locationType').change(function() {
@@ -356,21 +459,174 @@
             });
         });
 
+        //Delete Everything on Map
+        //Clear Local Storage Cache
+        function resetMap() {
+            for (var m in markers) {
+                markers[m].setMap(null);
+                markers[m] = null;
+            }
+            markers = [];
+
+            for (var d in dataCenterSizecircles) {
+                dataCenterSizecircles[d].setMap(null);
+                dataCenterSizecircles[d] = null;
+            }
+            dataCenterSizecircles = [];
+
+            for (var c in connections) {
+                connections[c].setMap(null);
+                connections[c] = null;
+            }
+            connections = [];
+
+            localStorage.clear();
+            console.log("Map Reset!");
+        }
+
+        //Loads Markers and Connections based on Data in local storage
+        function loadMapFromLocalStorage() {
+            var cloudSpecificationsArray = JSON.parse(localStorage.getItem("cloudSpecifications"));
+            var userRequirementsArray = JSON.parse(localStorage.getItem("userRequirements"));
+            var connectionsArray = JSON.parse(localStorage.getItem("connections"));
+
+            if (cloudSpecificationsArray != null) {
+                console.log("Local Storage Not Empty. Loading Cloud Specifications");
+                cloudIdCounter = cloudSpecificationsArray[cloudSpecificationsArray.length - 1].cloudId;
+                for (var c in cloudSpecificationsArray) {
+                    setMarker(cloudSpecificationsArray[c]);
+                }
+            }
+
+            if (userRequirementsArray != null) {
+                console.log("Local Storage Not Empty. Loading User Requirements");
+                userIdCounter = userRequirementsArray[userRequirementsArray.length - 1].userId;
+                for (var u in userRequirementsArray) {
+                    setMarker(userRequirementsArray[u]);
+                }
+            }
 
 
+            if (connectionsArray != null) {
+                console.log("Local Storage Not Empty. Loading Connections");
+                for (var n in connectionsArray) {
+                    //setMarker(connectionsArray[n]);
+
+                    console.log("Set Connection - Cloud Id: ", connectionsArray[n].cloudId);
+                    console.log("Set Connection - User Id: ", connectionsArray[n].userId);
+
+
+                    var cloudMarker = getMarker(cloudSpecificationsArray, connectionsArray[n].cloudId);
+                    var userMarker = getMarker(userRequirementsArray, connectionsArray[n].userId);
+
+                    console.log("Set Connection - Cloud Marker: ", cloudMarker);
+                    console.log("Set Connection - User Marker: ", userMarker);
+                    setConnection(cloudMarker, userMarker);
+                }
+            }
+
+
+        }
+
+        //appends item to local storage
+        //append only if not exists
         function appendItem(key, item) {
             var itemArray = [];
             if (localStorage.getItem(key) != null) {
                 itemArray = JSON.parse(localStorage.getItem(key));
             }
-            itemArray.push(item);
+
+            var found = -1;
+
+            //This is bad!! Not generic!
+            for (var i = 0; i < itemArray.length; i++) {
+                if (itemArray[i].cloudId === item.cloudId && itemArray[i].userId === item.userId) {
+                    found = 1;
+                    break;
+                }
+            }
+
+            if (found === -1) {
+                itemArray.push(item);
+            }
+
             localStorage.setItem(key, JSON.stringify(itemArray));
+        }
+
+        //deletes a connection from local storage
+        function removeConnection(key, startId, endId) {
+            var itemArray = [];
+            if (localStorage.getItem(key) != null) {
+                itemArray = JSON.parse(localStorage.getItem(key));
+            }
+
+            console.log("In Filtering Out: ", startId, endId);
+            console.log("ItemArray before Filter ", itemArray);
+
+            itemArray = itemArray.filter(function(item) {
+                return (!(item.cloudId === startId && item.userId === endId)); // || (item.cloudId !== endId && item.userId !== startId));
+            });
+
+            console.log("ItemArray after Filter ", itemArray);
+
+            localStorage.setItem(key, JSON.stringify(itemArray));
+        }
+
+        function removeMarker(key, id) {
+            var itemArray = [];
+
+            if (localStorage.getItem(key) != null) {
+                itemArray = JSON.parse(localStorage.getItem(key));
+            }
+
+            itemArray = itemArray.filter(function(item) {
+                return (!(item.cloudId === id || item.userId === id));
+            });
+
+            console.log("ItemArray after Filter ", itemArray);
+
+            localStorage.setItem(key, JSON.stringify(itemArray));
+        }
+
+        function getMarker(array, id) {
+            console.log("getMarker Array: ", array);
+            console.log("getMarker id: ", id);
+            for (var j = 0; j < array.length; j++) {
+                if (array[j].cloudId === id) {
+                    return array[j];
+                } else if (array[j].userId === id) {
+                    return array[j];
+                }
+            }
+        }
+
+        function sendData() {
+            var cloudSpecifications = JSON.parse(localStorage.getItem("cloudSpecifications"));
+            var userRequirements = JSON.parse(localStorage.getItem("userRequirements"));
+            var connections = JSON.parse(localStorage.getItem("connections"));
+
+            //$('#hidCloudSpecifications').val(cloudSpecifications);
+            //$('#hidUserRequirements').val(userRequirements);
+            //$('#hidConnections').val(connections);
+
+            var model = {
+                CloudSpecifications: cloudSpecifications,
+                UserRequirements: userRequirements,
+                Connections: connections
+            };
+
+            console.log("Model: ", model);
+            localStorage.setItem("Model", JSON.stringify(model));
+
+            $('#hidModel').val(JSON.stringify(model));
+
         }
     </script>
     <script src="http://maps.googleapis.com/maps/api/js?v=3&key=AIzaSyCv1wLOZxBKqjcE0oqmny3SZ3NWn45oCW8&libraries=geometry&callback=initMap"></script>
     <script src="../../Scripts/map/context-menu.js"></script>
     <script src="../../Scripts/map/map-context-menu-init.js"></script>
     <script src="../../Scripts/map/marker-context-menu-init.js"></script>
+    <script src="../../Scripts/map/connection-context-menu-init.js"></script>
 
     <script type="text/javascript">
         //var mapContextMenu = new ContextMenu(map, mapContextMenuOptions);
@@ -394,6 +650,8 @@
         //    mapContextMenu.show(mouseEvent.latLng, map);
         //});
 
+
+    
     </script>
 
 }

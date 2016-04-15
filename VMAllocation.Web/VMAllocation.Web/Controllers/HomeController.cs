@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
+using VMAllocation.Web.ViewModels.Home;
+using Newtonsoft.Json;
 
 namespace VMAllocation.Web.Controllers
 {
@@ -26,5 +28,16 @@ namespace VMAllocation.Web.Controllers
 
             return View();
         }
+
+        [HttpPost]
+        public ActionResult ProcessTopology(string model)
+        {
+            SpecificationViewModel specificationModel = JsonConvert.DeserializeObject<SpecificationViewModel>(model);
+
+            Console.WriteLine("Success");
+
+            return null;
+        }
+
     }
 }
