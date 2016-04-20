@@ -72,26 +72,26 @@
                 <form id="cloudForm">
                     <div class="form-group">
                         <label for="cpuCost">CPU Unit Cost Per Hour (QAR)</label>
-                        <input type="text" class="form-control" id="cpuCost" placeholder="CPU Unit Cost Per Hour (QAR)" value="1">
+                        <input type="text" class="form-control" id="cpuCost" placeholder="CPU Unit Cost Per Hour (QAR)">
                     </div>
                     <div class="form-group">
                         <label for="memoryCost">Memory Unit Cost Per Hour (QAR)</label>
-                        <input type="text" class="form-control" id="memoryCost" placeholder="Memory Unit Cost Per Hour" value="1">
+                        <input type="text" class="form-control" id="memoryCost" placeholder="Memory Unit Cost Per Hour">
                     </div>
                     <div class="form-group">
                         <label for="networkCost">Network Unit Cost Per Hour (QAR)</label>
-                        <input type="text" class="form-control" id="networkCost" placeholder="Network Unit Cost Per Hour" value="1">
+                        <input type="text" class="form-control" id="networkCost" placeholder="Network Unit Cost Per Hour">
                     </div>
                 </form>
                 <!--User Thresholds-->
                 <form id="thresholdForm">
                     <div class="form-group">
                         <label for="distanceThreshold">Distance Threshold (km)</label>
-                        <input type="text" class="form-control" id="distanceThreshold" placeholder="Distance Threshold (km)" value="1000">
+                        <input type="text" class="form-control" id="distanceThreshold" placeholder="Distance Threshold (km)" >
                     </div>
                     <div class="form-group">
                         <label for="costThreshold">Cost Threshold (QAR)</label>
-                        <input type="text" class="form-control" id="costThreshold" placeholder="Cost Threshold (QAR)" value="10000">
+                        <input type="text" class="form-control" id="costThreshold" placeholder="Cost Threshold (QAR)" >
                     </div>
                     @*<div class="form-group"> <!--No Need of this as External Bandwidth requirement is a Common Requirement for User & Data Center-->
                         <label for="bandwidthThreshold">Bandwidth Threshold (MB/Sec)</label>
@@ -112,22 +112,24 @@
     <script type="text/javascript">
         //Network Bandwidth === Bandwidth within cloud
         //User Bandwidth || Bandwidth Threshold === Bandwidth accessible to User
+        //After the change in specifications, as discussed with Mr. Deval, I will remove the userId and cloudId from the marker and replace it witha
+        //marker.universalId
         var map;
         var centerMapDubai = { lat: 24.95, lng: 55.333333 };
         var centerMapQatar = { lat: 25.27932000, lng: 51.52245000 };
         var centerMap = centerMapDubai;
         var connectStartPoint;
         var connectEndPoint;
-        var connectCloudId;
-        var connectUserId;
+        var connectStartPointId;
+        var connectEndPointId;
         var eventData;
-        var userIdCounter = 0;
-        var cloudIdCounter = 0;
+        //var userIdCounter = 0;
+        //var cloudIdCounter = 0;
         var markers = [];
         var dataCenterSizecircles = [];
         var connections = [];
         var connectionStartMarker;
-
+        var universalIdCounter = 0;
         $('#cloudForm').hide();
 
         //$('#thresholdForm').hide(); //By Default its the user Threshold Form
@@ -199,6 +201,7 @@
         });
 
         function setRequirements(event) {
+            console.log("settingRequirements", eventData);
             var locationTitle = $('#locationTitle').val();
             var locationType = $('#locationType').val();
 
@@ -216,26 +219,28 @@
 
             var location = event.latLng;
 
-            var cloudId;
-            var userId;
+            //var cloudId;
+            //var userId;
+            var universalId = universalIdCounter;
 
-            if (locationType === "cloud") {
-                cloudId = cloudIdCounter;
-            } else if (locationType === "user") {
-                userId = userIdCounter;
-            }
+            
+            //if (locationType === "cloud") {
+            //    cloudId = cloudIdCounter;
+            //} else if (locationType === "user") {
+            //    userId = userIdCounter;
+            //}
 
 
             $('#locationTitle').val(null);
             $('#cpuCount').val(10000);
-            $('#cpuCost').val(1);
+            $('#cpuCost').val(null);
             $('#memorySize').val(160000);
-            $('#memoryCost').val(1);
+            $('#memoryCost').val(null);
             $('#networkBandwidth').val(1000);
-            $('#networkCost').val(1);
-            $('#distanceThreshold').val(1000);
-            $('#costThreshold').val(10000);
-            $('#externalNetworkBandwidth').val(1000);
+            $('#networkCost').val(null);
+            $('#distanceThreshold').val(null);
+            $('#costThreshold').val(null);
+            $('#externalNetworkBandwidth').val(null);
 
             var values = {
                 locationTitle,
@@ -250,27 +255,27 @@
                 distanceThreshold,
                 costThreshold,
                 location,
-                cloudId,
-                userId
+                //cloudId,
+                //userId,
+                universalId
             }
 
+            console.log("JustbeforeSettingLocalStorage");
             if (values.locationType === "cloud") {
+                console.log("JustbeforeSetting_CLOUD_inLocalStorage");
                 var cloudSpecfications = values;
                 appendItem("cloudSpecifications", cloudSpecfications);
-                //marker.cloudId = cloudIdCounter;
-                //cloudIdCounter++;
             } else {
+                console.log("JustbeforeSetting_USER_LocalStorage");
                 var userSpecfications = values;
                 appendItem("userRequirements", userSpecfications);
-                //marker.userId = userIdCounter;
-                //userIdCounter++;
             }
 
             setMarker(values);
         }
 
         function setMarker(values) {
-
+            console.log("settingMarker", values);
             var marker = new google.maps.Marker({
                 position: values.location,
                 //position: event.latLng,
@@ -280,7 +285,7 @@
 
             var dataCenterSizeCircle = new google.maps.Circle({
                 strokeColor: '#00FF00',
-                strokeOpacity: 0.8,
+                strokeOpacity: 0.6,
                 strokeWeight: 2,
                 fillColor: values.locationType === "cloud" ? '#0000FF' : '#00FF00',
                 fillOpacity: 0.35,
@@ -290,15 +295,17 @@
                 radius: Math.log(values.cpuCount + values.memorySize) * 5000
             });
 
-            
+            marker.locationType = values.locationType;
             //Original Place of persistence to localstorage
-            if (values.locationType === "cloud") {
-                marker.cloudId = cloudIdCounter;
-                cloudIdCounter++;
-            } else {
-                marker.userId = userIdCounter;
-                userIdCounter++;
-            }
+            marker.universalId = universalIdCounter;
+            universalIdCounter++;
+            //if (values.locationType === "cloud") {
+            //    marker.cloudId = cloudIdCounter;
+            //    cloudIdCounter++;
+            //} else {
+            //    marker.userId = userIdCounter;
+            //    userIdCounter++;
+            //}
 
             var markerContextMenu = new ContextMenu(map, markerContextMenuOptions);
 
@@ -309,16 +316,19 @@
 
                         markerContextMenu.hide();
                         marker.setMap(null);
-                        marker = null;
+                        
                         console.log("Marker Deleted!");
 
                         dataCenterSizeCircle.setMap(null);
 
-                        if (marker.cloudId != null) {
-                            removeMarker("cloudSpecifications", marker.cloudId);
-                        } else if (marker.userId != null) {
-                            removeMarker("userRequirements", marker.userId);
+                        if (marker.locationType === "cloud") {
+                            removeMarker("cloudSpecifications", marker.universalId);
+                        } else {
+                            removeMarker("userRequirements", marker.universalId);
                         }
+
+                        marker = null;
+                        dataCenterSizeCircle = null;
                         // do something
                         break;
                     case 'menu_connect_clicked':
@@ -326,16 +336,22 @@
                         markerContextMenu.hide();
                         console.log("Select Endpoint!");
                         connectStartPoint = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() }
-                        if (marker.cloudId != null) {
-                            connectCloudId = marker.cloudId;
-                        } else if (marker.userId != null) {
-                            connectUserId = marker.userId;
-                        }
+
+
+                        connectStartPointId = marker.universalId;
+                        //if (marker.cloudId != null) {
+                        //    connectStartPointId = marker.cloudId;
+                        //} else if (marker.userId != null) {
+                        //    connectEndPointId = marker.userId;
+                        //}
+
+
                         connectionStartMarker = marker;
                         console.log("StartPoint: ", connectStartPoint.lat, connectStartPoint.lng);
                         break;
                     default:
                         // freak out
+                        console.log("Freaking Out!!!");
                         break;
                     }
                 });
@@ -345,35 +361,42 @@
             });
 
             marker.addListener('click', function (mouseEvent) {
-                var cloudMarker = null;
-                var userMarker = null;
+                var startMarker = null;
+                var endMarker = null;
                 if (connectStartPoint != null) {
                     connectEndPoint = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() }
                     console.log("EndPoint: ", connectEndPoint.lat, connectEndPoint.lng);
 
+
+                    endMarker = marker;
+                    endMarker.location = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() };
+
+                    startMarker = connectionStartMarker;
+                    startMarker.location = { lat: connectionStartMarker.getPosition().lat(), lng: connectionStartMarker.getPosition().lng() };
+
                     console.log("marker", marker);
-                    if (marker.cloudId != null) {
-                        //connectCloudId = marker.cloudId;
-                        cloudMarker = marker;
-                        cloudMarker.location = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() };
-                    } else {
-                        //connectUserId = marker.userId;
-                        userMarker = marker;
-                        userMarker.location = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() };
-                    }
-                    console.log("connectionStartMarker", connectionStartMarker);
-                    if (connectionStartMarker.cloudId != null) {
-                        //connectCloudId = marker.cloudId;
-                        cloudMarker = connectionStartMarker;
-                        cloudMarker.location = { lat: connectionStartMarker.getPosition().lat(), lng: connectionStartMarker.getPosition().lng() };
-                    } else{
-                        //connectUserId = marker.userId;
-                        userMarker = connectionStartMarker;
-                        userMarker.location = { lat: connectionStartMarker.getPosition().lat(), lng: connectionStartMarker.getPosition().lng() };
-                    }
+                    //if (marker.cloudId != null) {
+                    //    //connectStartPointId = marker.cloudId;
+                    //    startMarker = marker;
+                    //    startMarker.location = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() };
+                    //} else {
+                    //    //connectEndPointId = marker.userId;
+                    //    endMarker = marker;
+                    //    endMarker.location = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() };
+                    //}
+                    //console.log("connectionStartMarker", connectionStartMarker);
+                    //if (connectionStartMarker.cloudId != null) {// connectionStartMarker is a global variable
+                    //    //connectStartPointId = marker.cloudId;
+                    //    startMarker = connectionStartMarker;
+                    //    startMarker.location = { lat: connectionStartMarker.getPosition().lat(), lng: connectionStartMarker.getPosition().lng() };
+                    //} else{
+                    //    //connectEndPointId = marker.userId;
+                    //    endMarker = connectionStartMarker;
+                    //    endMarker.location = { lat: connectionStartMarker.getPosition().lat(), lng: connectionStartMarker.getPosition().lng() };
+                    //}
 
                     //setConnection(mouseEvent, cloudMarker, userMarker);
-                    setConnection(cloudMarker, userMarker);
+                    setConnection(startMarker, endMarker);
                 }
             });
 
@@ -383,42 +406,45 @@
             $('#locationModal').modal('hide');
         }
 
-        function setConnection(cloudMarker, userMarker) {
-            if (userMarker == null || cloudMarker == null) {
-                console.error("Only User to Cloud Link is supported for now");
-                //connectUserId = null;
-                //connectCloudId = null;
+        //connection changed
+        function setConnection(startMarker, endMarker) {
+            if (endMarker == null || startMarker == null) {
+                console.error("Only User to Cloud Link is supported for now Or one of the Markers is NULL");
                 return;
             }
 
-            console.log("cloud marker: ", cloudMarker);
-            console.log("user marker: ", userMarker);
+            console.log("cloud marker - startMarker: ", startMarker);
+            console.log("user marker - endMarker: ", endMarker);
 
             var distance = google.maps.geometry.spherical.computeDistanceBetween(
-                    new google.maps.LatLng(cloudMarker.location.lat, cloudMarker.location.lng),
-                    new google.maps.LatLng(userMarker.location.lat, userMarker.location.lng));
+                    new google.maps.LatLng(startMarker.location.lat, startMarker.location.lng),
+                    new google.maps.LatLng(endMarker.location.lat, endMarker.location.lng));
 
             console.log("Distance: ", distance / 1000, "km");
 
             var connection = new google.maps.Polyline({
-                path: [new google.maps.LatLng(cloudMarker.location.lat, cloudMarker.location.lng),
-                        new google.maps.LatLng(userMarker.location.lat, userMarker.location.lng)],
+                path: [new google.maps.LatLng(startMarker.location.lat, startMarker.location.lng),
+                        new google.maps.LatLng(endMarker.location.lat, endMarker.location.lng)],
                 geodesic: true,
                 strokeColor: '#0000FF',
                 strokeOpacity: 0.5,
                 strokeWeight: 7
             });
-
-            connection.cloudId = cloudMarker.cloudId;
-            connection.userId = userMarker.userId;
+            //Continue from here
+            connection.startPointId = startMarker.universalId;
+            connection.startPointType = startMarker.locationType;
+            connection.endPointId = endMarker.universalId;
+            connection.endPointType = endMarker.locationType;
 
 
             var connectionSpecification = {
-                "cloudId": cloudMarker.cloudId,
-                "userId": userMarker.userId,
+                "startPointId": connection.startPointId,
+                "startPointType": connection.startPointType,
+                "endPointId": connection.endPointId,
+                "endPointType": connection.endPointType,
                 "distance": distance
             }
-            appendItem("connections", connectionSpecification);
+            appendConnection("connections", connectionSpecification);
 
 
             var connectionContextMenu = new ContextMenu(map, connectionContextMenuOptions);
@@ -429,7 +455,7 @@
 
                         connectionContextMenu.hide();
                         connection.setMap(null);
-                        removeConnection("connections", connection.cloudId, connection.userId);
+                        removeConnection("connections", connection.startPointId, connection.endPointId);
                         connection = null;
                         console.log("Connection Deleted!");
                         break;
@@ -492,7 +518,7 @@
 
             if (cloudSpecificationsArray != null) {
                 console.log("Local Storage Not Empty. Loading Cloud Specifications");
-                cloudIdCounter = cloudSpecificationsArray[cloudSpecificationsArray.length - 1].cloudId;
+                cloudIdCounter = cloudSpecificationsArray[cloudSpecificationsArray.length - 1].universalId;
                 for (var c in cloudSpecificationsArray) {
                     setMarker(cloudSpecificationsArray[c]);
                 }
@@ -500,7 +526,7 @@
 
             if (userRequirementsArray != null) {
                 console.log("Local Storage Not Empty. Loading User Requirements");
-                userIdCounter = userRequirementsArray[userRequirementsArray.length - 1].userId;
+                userIdCounter = userRequirementsArray[userRequirementsArray.length - 1].universalId;
                 for (var u in userRequirementsArray) {
                     setMarker(userRequirementsArray[u]);
                 }
@@ -512,16 +538,28 @@
                 for (var n in connectionsArray) {
                     //setMarker(connectionsArray[n]);
 
-                    console.log("Set Connection - Cloud Id: ", connectionsArray[n].cloudId);
-                    console.log("Set Connection - User Id: ", connectionsArray[n].userId);
+                    console.log("Set Connection - Cloud Id  - Start Id: ", connectionsArray[n].startPointId);
+                    console.log("Set Connection - User Id - End Id: ", connectionsArray[n].endPointId);
 
+                    var startMarker = null;
+                    var endMarker = null;
+                    if (connectionsArray[n].startPointType === "cloud") {
+                        startMarker = getMarker(cloudSpecificationsArray, connectionsArray[n].startPointId);
+                    } else {
+                        startMarker = getMarker(userRequirementsArray, connectionsArray[n].startPointId);
+                    }
 
-                    var cloudMarker = getMarker(cloudSpecificationsArray, connectionsArray[n].cloudId);
-                    var userMarker = getMarker(userRequirementsArray, connectionsArray[n].userId);
+                    if (connectionsArray[n].endPointType === "cloud") {
+                        endMarker = getMarker(cloudSpecificationsArray, connectionsArray[n].endPointId);
+                    } else {
+                        endMarker = getMarker(userRequirementsArray, connectionsArray[n].endPointId);
+                    }
+                    //var startMarker = 
+                    //var endMarker = 
 
-                    console.log("Set Connection - Cloud Marker: ", cloudMarker);
-                    console.log("Set Connection - User Marker: ", userMarker);
-                    setConnection(cloudMarker, userMarker);
+                    console.log("Set Connection - Start Marker: ", startMarker);
+                    console.log("Set Connection - End Marker: ", endMarker);
+                    setConnection(startMarker, endMarker);
                 }
             }
 
@@ -535,12 +573,46 @@
             if (localStorage.getItem(key) != null) {
                 itemArray = JSON.parse(localStorage.getItem(key));
             }
+            itemArray.push(item);
+
+
+            //var found = -1;
+            ////This is bad!! Not generic! Only FOr COnnection. If connection already exists dont pus it.
+            ////if its marker the following condition will always return false and it will always be addeds
+            //for (var i = 0; i < itemArray.length; i++) {
+            //    console.log("inAppendItemForArray - ITEM", item);
+            //    console.log("inAppendItemForArray - ITEM Array Element", itemArray[i]);
+            //    if (itemArray[i].startPointId === item.startPointId && itemArray[i].endPointId === item.endPointId) {
+            //        console.log("inAppendItemForArray- FOUND");
+            //        found = 1;
+            //        break;
+            //    }
+            //}
+
+            //if (found === -1) {
+                
+            //}
+
+            localStorage.setItem(key, JSON.stringify(itemArray));
+        }
+
+        //appends item to local storage
+        //append only if not exists
+        function appendConnection(key, item) {
+            var itemArray = [];
+            if (localStorage.getItem(key) != null) {
+                itemArray = JSON.parse(localStorage.getItem(key));
+            }
 
             var found = -1;
 
-            //This is bad!! Not generic!
+            //This is bad!! Not generic! Only FOr COnnection. If connection already exists dont pus it.
+            //if its marker the following condition will always return false and it will always be addeds
             for (var i = 0; i < itemArray.length; i++) {
-                if (itemArray[i].cloudId === item.cloudId && itemArray[i].userId === item.userId) {
+                console.log("inAppendItemForArray - ITEM", item);
+                console.log("inAppendItemForArray - ITEM Array Element", itemArray[i]);
+                if (itemArray[i].startPointId === item.startPointId && itemArray[i].endPointId === item.endPointId) {
+                    console.log("inAppendItemForArray- FOUND");
                     found = 1;
                     break;
                 }
@@ -564,7 +636,7 @@
             console.log("ItemArray before Filter ", itemArray);
 
             itemArray = itemArray.filter(function(item) {
-                return (!(item.cloudId === startId && item.userId === endId)); // || (item.cloudId !== endId && item.userId !== startId));
+                return (!(item.startPointId === startId && item.endPointId === endId)); // || (item.cloudId !== endId && item.userId !== startId));
             });
 
             console.log("ItemArray after Filter ", itemArray);
@@ -580,7 +652,7 @@
             }
 
             itemArray = itemArray.filter(function(item) {
-                return (!(item.cloudId === id || item.userId === id));
+                return (!(item.universalId === id));
             });
 
             console.log("ItemArray after Filter ", itemArray);
@@ -592,11 +664,13 @@
             console.log("getMarker Array: ", array);
             console.log("getMarker id: ", id);
             for (var j = 0; j < array.length; j++) {
-                if (array[j].cloudId === id) {
-                    return array[j];
-                } else if (array[j].userId === id) {
+
+                if (array[j].universalId === id) {
                     return array[j];
                 }
+                //else if (array[j].userId === id) {
+                //    return array[j];
+                //}
             }
         }
 
