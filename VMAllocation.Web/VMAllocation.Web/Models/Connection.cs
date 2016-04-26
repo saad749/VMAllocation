@@ -8,8 +8,15 @@ namespace VMAllocation.Web.Models
 {
     public class Connection
     {
-        public int CloudId { get; set; }
-        public int UserId { get; set; }
+        public int StartPointId { get; set; }
+        public int EndPointId { get; set; }
         public double Distance { get; set; }
+        public double LinkBandwidth { get; set; }
+
+        public double AllocatedBandwidth { get; set; }
+        public double RemainBandwidth => LinkBandwidth - AllocatedBandwidth;
+
+        public List<UserCloudAllocation> UtilizingAllocations { get; set; } 
+
     }
 }

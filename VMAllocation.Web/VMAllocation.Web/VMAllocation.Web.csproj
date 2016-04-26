@@ -178,7 +178,10 @@
     </Compile>
     <Compile Include="Models\CloudSpecification.cs" />
     <Compile Include="Models\Connection.cs" />
+    <Compile Include="Models\UserCloudAllocation.cs" />
     <Compile Include="Models\UserRequirement.cs" />
+    <Compile Include="Services\IAllocation.cs" />
+    <Compile Include="Services\LoadBalancedAllocationService.cs" />
     <Compile Include="ViewModels\Account\ExternalLoginConfirmationViewModel.cs" />
     <Compile Include="ViewModels\Home\SpecificationViewModel.cs" />
     <Compile Include="ViewModels\Manage\AddPhoneNumberViewModel.cs" />

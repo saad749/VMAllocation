@@ -36,7 +36,7 @@ namespace VMAllocation.Web.Controllers
 
             Console.WriteLine("Success");
 
-            return null;
+            return View("Result");
         }
 
     }
