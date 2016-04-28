@@ -5,6 +5,7 @@ using System.Web;
 using System.Web.Mvc;
 using VMAllocation.Web.ViewModels.Home;
 using Newtonsoft.Json;
+using VMAllocation.Web.Services;
 
 namespace VMAllocation.Web.Controllers
 {
@@ -33,6 +34,10 @@ namespace VMAllocation.Web.Controllers
         public ActionResult ProcessTopology(string model)
         {
             SpecificationViewModel specificationModel = JsonConvert.DeserializeObject<SpecificationViewModel>(model);
+
+            IAllocation allocationModel = new LoadBalancedAllocationService();
+            allocationModel.Allocate(specificationModel.CloudSpecifications, specificationModel.UserRequirements,
+                specificationModel.Connections);
 
             Console.WriteLine("Success");
 
