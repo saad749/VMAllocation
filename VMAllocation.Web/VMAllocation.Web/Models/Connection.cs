@@ -16,7 +16,9 @@ namespace VMAllocation.Web.Models
         public double AllocatedBandwidth { get; set; }
         public double RemainBandwidth => LinkBandwidth - AllocatedBandwidth;
 
-        public List<UserCloudAllocation> UtilizingAllocations { get; set; } 
+        public List<UserCloudAllocation> UtilizingAllocations { get; set; }
+
+        public bool Visited { get; set; }   
 
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Web;
 using VMAllocation.Web.Models;
@@ -9,173 +10,150 @@ namespace VMAllocation.Web.Services
     public class LoadBalancedAllocationService : IAllocation
     {
 
+        //Dirty Trick to gget the Path for each cloud.
+        private List<Tuple<int, Connection[]>> Paths;
+
         public List<string> Allocate(List<CloudSpecification> cloudSpecifications,
             List<UserRequirement> userRequirements, List<Connection> connections)
         {
             List<string> results = new List<string>();
-            List<UserCloudAllocation> allocations = new List<UserCloudAllocation>();
 
+            List<int> cloudAndUsers = new List<int>();
+            cloudAndUsers.AddRange(cloudSpecifications.Select(c => c.UniversalId));
+            cloudAndUsers.AddRange(userRequirements.Select(c => c.UniversalId));
+            cloudAndUsers.Sort();
 
-            int i = 0;
-            foreach (UserRequirement userRequirement in userRequirements)
+            int lastId = cloudAndUsers[cloudAndUsers.Count - 1];
+            lastId++;
+
+            
+
+            foreach (CloudSpecification cloudSpecification in cloudSpecifications)
             {
-                cloudSpecifications = cloudSpecifications.OrderByDescending(c => c.RemainCpuCount).ToList();
-
-
-                if (userRequirement.CpuCount < cloudSpecifications[i].RemainCpuCount)
-                {
-                    if (userRequirement.MemorySize < cloudSpecifications[i].RemainMemorySize)
-                    {
-
-                        int cloudId = cloudSpecifications[i].UniversalId;
-                        List<Connection> tempConnections =
-                            connections.Where(c => c.StartPointId == cloudId || c.EndPointId == cloudId).ToList();
-                        if (tempConnections.Count > 0)
-                        {
-                            Connection tempConnection =
-                                tempConnections.FirstOrDefault(c =>
-                                    c.StartPointId == userRequirement.UniversalId ||
-                                    c.EndPointId == userRequirement.UniversalId);
-
-                            if (tempConnection != null)
-                            {
-                                // You are done! Connection Found
-                                Console.WriteLine("Found on First Level!");
-                                Console.WriteLine($"Success! {userRequirement.UniversalId} VM Successfully Placed!");
-                            }
-                            else
-                            {
-                                List<int> neighbouringIds =
-                                    tempConnections.Where(t => t.StartPointId != cloudId)
-                                        .Select(t => t.StartPointId)
-                                        .ToList();
-
-                                neighbouringIds.AddRange(tempConnections.Where(t => t.EndPointId != cloudId)
-                                        .Select(t => t.EndPointId)
-                                        .ToList());
-
-                                List<int> visitedIds = new List<int>(cloudId);
-
-
-                                bool vmPlaced = FindConnection(connections, tempConnections, cloudId, userRequirement.UniversalId, neighbouringIds, visitedIds);
-                                if (vmPlaced)
-                                {
-                                    Console.WriteLine($"Success! {userRequirement.UniversalId} VM Successfully Placed!");
-                                }
-
-                            }
-
-
-                        }
-                        else
-                        {
-                            Console.WriteLine($"{cloudId} has no Connections");
-                        }
-
-                        //First load the connection...
-                        if (userRequirement.ExternalBandwidth < connections[i].RemainBandwidth)
-                        {
-
-                        }
-                    }
-                }
-                else
-                {
-                    userRequirements.Remove(userRequirement);
-                    results.Add(
-                        $"{userRequirement.UniversalId} Cannot be placed on any VM. CPU requirements not feasible");
-                }
+                cloudSpecification.AllocatedUserRequirements = new List<UserRequirement>();
             }
 
 
+            foreach (UserRequirement userRequirement in userRequirements)
+            {
+
+                Connection[][] adjacencyMatrix = new Connection[lastId][];
+                //int i = 0;
+                foreach (int row in cloudAndUsers)
+                {
+                    adjacencyMatrix[row] = new Connection[lastId];
+                    //int j = 0;
+                    foreach (int column in cloudAndUsers)
+                    {
+                        Connection connection = connections.FirstOrDefault(c => (c.StartPointId == row && c.EndPointId == column) ||
+                                                                                (c.EndPointId == row && c.StartPointId == column));
+                        adjacencyMatrix[row][column] = connection;
+
+                    }
+                }
+
+                Paths = new List<Tuple<int, Connection[]>>();
+                List<int> possibleClouds = Dijkstra(cloudAndUsers, adjacencyMatrix, userRequirement, cloudSpecifications);
+
+                CloudSpecification feasibleCloudSpecification = cloudSpecifications.Where(c => possibleClouds.Contains(c.UniversalId)).OrderByDescending(c => c.RemainCpuCount).FirstOrDefault();
+                if (feasibleCloudSpecification != null)
+                {
+                    feasibleCloudSpecification.AllocateUser(userRequirement);
+
+                    string pathInfo = "";
+                    double pathDistance = 0.0;
+                    foreach (Connection connection in Paths.FirstOrDefault(p => p.Item1 == feasibleCloudSpecification.UniversalId).Item2)
+                    {
+                        pathInfo += $" Endpoints: {connection.StartPointId} <-> {connection.EndPointId} - ";
+                        Connection realConnection =
+                            connections.FirstOrDefault(
+                                c => c.StartPointId == connection.StartPointId && c.EndPointId == connection.EndPointId);
+
+                        realConnection.AllocatedBandwidth += userRequirement.BandwidthThreshold;
+                        pathDistance += connection.Distance;
+                    }
+
+                    results.Add($"VM id: {userRequirement.UniversalId} | title: {userRequirement.LocationTitle} " +
+                                $"placed on Cloud Id {feasibleCloudSpecification.UniversalId} | title: {feasibleCloudSpecification.LocationTitle}" +
+                                $" | Via Path: {pathInfo} | Distance: {pathDistance}");
+                }
+                else
+                {
+                    results.Add($"VM id: {userRequirement.UniversalId} cannot be placed on any suitable Cloud!");
+                }
+
+               
+            }
 
             return results;
         }
 
-        //DONT HAVE TEMP CONNECTIONS HERE!> Have the specific Node that will lead to it!!
-        private bool FindConnection(List<Connection> connections, List<Connection> tempConnections, int cloudId, int userId, List<int> neighbouringIds, List<int> visitedIds  )
+
+        public List<int> Dijkstra(List<int> cloudAndUsers, Connection[][] adjacencyMatrix, UserRequirement userRequirement, List<CloudSpecification> cloudSpecifications)
         {
-            List<List<Connection>> path = new List<List<Connection>>();
+            int source = userRequirement.UniversalId;
+            List<int> possibleClouds = new List<int>();
+            List<int> tempCloudAndUsers = new List<int>(cloudAndUsers);
 
-            int i = 0;
-            while (true)
+            List<Connection> path = new List<Connection>();
+
+
+            while (tempCloudAndUsers.Count > 0)
             {
-                List<Connection> deepConnections =
-                    connections.Where(
-                        d =>
-                            tempConnections.Any(
-                                t =>
-                                    t.StartPointId == d.StartPointId || t.EndPointId == d.StartPointId ||
-                                    t.StartPointId == d.EndPointId || t.EndPointId == d.EndPointId)).ToList();
-
-                //List<Connection> deepConnections = connections.Where(d => neighbouringIds.Any(t => (t == d.StartPointId || t == d.EndPointId) && (t != visitedIds)) ).ToList();
+                double previousDistance = path.Sum(p => p.Distance);
+                //Find the vertex with smallest distance && with constraints
+                Connection shortestConnection =
+                adjacencyMatrix[source].FirstOrDefault(m => m != null && m.RemainBandwidth >= userRequirement.BandwidthThreshold && (m.Distance + previousDistance <= userRequirement.DistanceThreshold));
+                //adjacencyMatrix[source].FirstOrDefault(m => m.RemainBandwidth >= userRequirement.ExternalBandwidth);
 
 
-                //This is just to remove the already visited connections
-                //This is needed because we dont know if the start or the end was the point which matched!
-                //foreach (Connection tempConnection in tempConnections)
-                //{
-                //    deepConnections.Remove(tempConnection);
-                //}
-
-
-                if (deepConnections.Count > 0)
+                if (shortestConnection != null)
                 {
-                    Connection deepConnection =
-                        deepConnections.FirstOrDefault(c => c.StartPointId == userId || c.EndPointId == userId);
+                    path.Add(shortestConnection);
+                    //Just something due to the nature of implementation
+                    int shortestPathId = shortestConnection.StartPointId == source
+                        ? shortestConnection.EndPointId
+                        : shortestConnection.StartPointId;
 
-                    if (deepConnection != null)
+                    //Is it a cloud?
+                    CloudSpecification possibleCloud = cloudSpecifications.FirstOrDefault(c => c.UniversalId == shortestPathId 
+                                                        && c.RemainCpuCount >= userRequirement.CpuCount && c.RemainMemorySize >= userRequirement.MemorySize 
+                                                        && c.NetworkBandwidth >= userRequirement.NetworkBandwidth
+                                                        && c.CalculateCost(userRequirement) <= userRequirement.CostThreshold);
+                    if (possibleCloud != null)
                     {
-                        // You are done! Connection Found
-                        //But track the way!!
-                        Console.WriteLine("Found!!");
-
-                        //Tracking the Path!!
-                        path.Add(new List<Connection>() { deepConnection });
-                        //path[i] = new List<Connection>() {deepConnection};
-
-                        for (int j = i - 1; j >= 0; j--)
-                        {
-                            for (int k = 0; k < path[j].Count; k++)
-                            {
-                                if (path[j][k].StartPointId != path[j + 1][0].StartPointId &&
-                                    path[j][k].EndPointId != path[j + 1][0].StartPointId &&
-                                    path[j][k].StartPointId != path[j + 1][0].EndPointId &&
-                                    path[j][k].EndPointId != path[j + 1][0].EndPointId)
-                                {
-                                    path[j].Remove(path[j][k]);
-                                }
-                            }
-                        }
-
-                        return true;
-                        //break;
+                        Paths.Add(new Tuple<int, Connection[]>(possibleCloud.UniversalId, path.ToArray()));
+                        possibleClouds.Add(possibleCloud.UniversalId);
                     }
-                    else
-                    {
-                        //CONTINUEE!!!
-                        //foreach (Connection tempConnection in tempConnections)
-                        //{
-                        //    deepConnections.Remove(tempConnection);
-                        //}
-                        path.Add(new List<Connection>(tempConnections));
+                    //Remove from cloudAndUsers
+                    tempCloudAndUsers.Remove(shortestPathId);
+                    //Remove this vertex from the set. Possibly to disallow cycles?
+                    adjacencyMatrix[source][shortestPathId] = null;
+                    adjacencyMatrix[shortestPathId][source] = null;
 
-                        tempConnections = deepConnections;
-                        i++;
-                        continue;
-                    }
+                    source = shortestPathId;
                 }
                 else
                 {
-                    Console.WriteLine("No Further Connections Found!!");
-                    return false;
-                    //break;
+                    path.Clear();
+                    source = userRequirement.UniversalId;
+                    Connection availableConnection =
+                        adjacencyMatrix[source].FirstOrDefault(m => m != null && m.RemainBandwidth >= userRequirement.BandwidthThreshold && (m.Distance + previousDistance <= userRequirement.DistanceThreshold));
+                    if (availableConnection == null)
+                    {
+                        break;
+                    }
+                    
                 }
-
-                
             }
+            
+            
 
 
+
+
+            return possibleClouds;
         }
+        
     }
 }

@@ -183,6 +183,7 @@
     <Compile Include="Services\IAllocation.cs" />
     <Compile Include="Services\LoadBalancedAllocationService.cs" />
     <Compile Include="ViewModels\Account\ExternalLoginConfirmationViewModel.cs" />
+    <Compile Include="ViewModels\Home\AllocationResultViewModel.cs" />
     <Compile Include="ViewModels\Home\SpecificationViewModel.cs" />
     <Compile Include="ViewModels\Manage\AddPhoneNumberViewModel.cs" />
     <Compile Include="Models\ApplicationDbContext.cs" />
@@ -256,12 +257,12 @@
     <Content Include="Views\Account\ResetPasswordConfirmation.cshtml" />
     <Content Include="Views\Account\SendCode.cshtml" />
     <Content Include="Views\Account\VerifyCode.cshtml" />
-    <Content Include="Views\Manage\AddPhoneNumber.cshtml" />
-    <Content Include="Views\Manage\ChangePassword.cshtml" />
-    <Content Include="Views\Manage\Index.cshtml" />
-    <Content Include="Views\Manage\ManageLogins.cshtml" />
-    <Content Include="Views\Manage\SetPassword.cshtml" />
-    <Content Include="Views\Manage\VerifyPhoneNumber.cshtml" />
+    <Content Include="Views\Shared\Manage\AddPhoneNumber.cshtml" />
+    <Content Include="Views\Shared\Manage\ChangePassword.cshtml" />
+    <Content Include="Views\Shared\Manage\Index.cshtml" />
+    <Content Include="Views\Shared\Manage\ManageLogins.cshtml" />
+    <Content Include="Views\Shared\Manage\SetPassword.cshtml" />
+    <Content Include="Views\Shared\Manage\VerifyPhoneNumber.cshtml" />
     <Content Include="Views\Shared\Lockout.cshtml" />
     <Content Include="Views\Shared\_LoginPartial.cshtml" />
     <Content Include="Views\Home\Result.cshtml" />

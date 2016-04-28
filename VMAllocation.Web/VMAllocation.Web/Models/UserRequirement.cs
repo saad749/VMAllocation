@@ -15,9 +15,11 @@ namespace VMAllocation.Web.Models
         public double MemorySize { get; set; }
         public double NetworkBandwidth { get; set; }
         /// NetworkThreshold
-        public double ExternalBandwidth { get; set; }
+        public double ExternalNetworkBandwidth { get; set; }    
         public double DistanceThreshold { get; set; }
         public double CostThreshold { get; set; }
+
+        public double BandwidthThreshold => ExternalNetworkBandwidth;
 
         public bool Allocated { get; set; }
         public CloudSpecification AllocatedCloud { get; set; }  

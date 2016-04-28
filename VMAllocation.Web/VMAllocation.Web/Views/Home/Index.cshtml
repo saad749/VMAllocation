@@ -254,9 +254,9 @@
 
             //var cloudId;
             //var userId;
-            universalIdCounter++;
+            
             var universalId = universalIdCounter;
-
+            universalIdCounter++;
 
             //if (locationType === "cloud") {
             //    cloudId = cloudIdCounter;
@@ -625,13 +625,16 @@
             }
 
             universalIdCounter = getMaxId(cloudSpecificationsArray, userRequirementsArray);
+            universalIdCounter++;
             console.log("UniversalIdCounterAt: ", universalIdCounter);
         }
 
         function getMaxId(cloud, user) {
 
-            var cloudMax = cloud != null ? cloud[cloud.length - 1] : 0;
-            var userMax = user != null ? user[user.length - 1] : 0;
+            var cloudMax = cloud != null ? cloud[cloud.length - 1].universalId : -1;
+            var userMax = user != null ? user[user.length - 1].universalId : -1;
+            console.log("UniversalIdCounter - cloudMax: ", cloudMax);
+            console.log("UniversalIdCounter - userMax: ", userMax);
 
             return cloudMax > userMax ? cloudMax : userMax;
         }

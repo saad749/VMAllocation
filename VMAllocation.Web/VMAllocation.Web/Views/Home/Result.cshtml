@@ -1,4 +1,4 @@
-﻿
+﻿@model VMAllocation.Web.ViewModels.Home.AllocationResultViewModel
 @{
     ViewBag.Title = "Result";
 }
@@ -8,4 +8,40 @@
 <div class="row">
     <h1 class="text-success">Congratulations! Result Processed Successfully!</h1>
 </div>
+<div class="row">
+    <ol>
+        @foreach (string result in Model.Results)   
+        {
+            <li>@result</li>
+        }       
+    </ol>
+</div>
 
+
+<div class="row">
+    <h2>Users Requirements</h2>
+    @foreach (List<string> userRequirementDetail in Model.UserRequirementDetails)
+    {
+        <hr/>
+        <ul>
+            @foreach (string req in userRequirementDetail)
+            {
+                <li>@req</li>
+            }
+        </ul>
+    }
+</div>
+
+<div class="row">
+    <h2>Cloud Specifications</h2>
+    @foreach (List<string> cloudSpecificationDetail in Model.CloudSpecificationDetails)
+    {
+        <hr/>
+        <ul>
+            @foreach (string spec in cloudSpecificationDetail)
+            {
+                <li>@spec</li>
+            }
+        </ul>
+    }
+</div>

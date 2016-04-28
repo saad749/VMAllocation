@@ -31,5 +31,24 @@ namespace VMAllocation.Web.Models
 
         public List<UserRequirement> AllocatedUserRequirements { get; set; }
 
+
+        public bool AllocateUser(UserRequirement userRequirement)
+        {
+            AllocatedCpuCount += userRequirement.CpuCount;
+            AllocatedMemorySize += userRequirement.MemorySize;
+            AllocatedNetworkBandwidth += userRequirement.NetworkBandwidth;
+
+            AllocatedUserRequirements.Add(userRequirement);
+            userRequirement.Allocated = true;
+            userRequirement.AllocatedCloud = this;
+
+            return false;
+        }
+
+        public double CalculateCost(UserRequirement userRequirement)
+        {
+            return ((userRequirement.CpuCount * CpuCost) + (userRequirement.MemorySize * MemoryCost) + (userRequirement.NetworkBandwidth * NetworkCost));
+        }
+
     }
 }
