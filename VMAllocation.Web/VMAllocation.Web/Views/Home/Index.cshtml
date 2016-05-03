@@ -342,7 +342,7 @@
                 position: values.location,
                 //position: event.latLng,
                 map: map,
-                title: values.locationTitle
+                title: values.locationTitle + " | " + values.universalId
             });
 
             var dataCenterSizeCircle = new google.maps.Circle({
@@ -561,6 +561,7 @@
             connections = [];
 
             localStorage.clear();
+            universalIdCounter = 0;
             console.log("Map Reset!");
         }
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Web;
@@ -38,18 +39,27 @@ namespace VMAllocation.Web.Controllers
             AllocationResultViewModel viewModel = new AllocationResultViewModel();  
 
             SpecificationViewModel specificationModel = JsonConvert.DeserializeObject<SpecificationViewModel>(model);
-
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
             IAllocation allocationModel = new LoadBalancedAllocationService();
             List<string> results =  allocationModel.Allocate(specificationModel.CloudSpecifications, specificationModel.UserRequirements,
                 specificationModel.Connections);
-
+            stopwatch.Stop();
+            viewModel.ProcessTime = stopwatch.ElapsedTicks;
             Console.WriteLine("Success");
-
+            int reqFullfilled = 0;
             viewModel.UserRequirementDetails = new List<List<string>>();
             foreach (UserRequirement userRequirement in specificationModel.UserRequirements)
             {
                 viewModel.UserRequirementDetails.Add(PrintDetails(userRequirement));
+                if (userRequirement.Allocated == true)
+                {
+                    reqFullfilled++;
+                }
+                
             }
+            viewModel.ReqFullfilledPercentage = ((double)reqFullfilled/ (double)specificationModel.UserRequirements.Count)* (double)100;
+
             viewModel.CloudSpecificationDetails = new List<List<string>>();
             foreach (CloudSpecification cloudSpecification in specificationModel.CloudSpecifications)
             {
@@ -57,6 +67,19 @@ namespace VMAllocation.Web.Controllers
             }
 
             viewModel.Results = results;
+
+            viewModel.UtilisationPercentage = new List<string>();
+            foreach (CloudSpecification cloudSpecification in specificationModel.CloudSpecifications)
+            {
+                if (cloudSpecification.CpuCount > cloudSpecification.RemainCpuCount)
+                {
+                    viewModel.CloudsInUse++;
+                    viewModel.UtilisationPercentage.Add($"Cloud Id: {cloudSpecification.UniversalId} | {cloudSpecification.LocationTitle} : " +
+                                                        $"{(cloudSpecification.AllocatedCpuCount / cloudSpecification.CpuCount) * 100}%");
+                }
+            }
+
+
             return View("Result", viewModel);
         }
 

@@ -25,7 +25,9 @@ namespace VMAllocation.Web.Services
 
             int lastId = cloudAndUsers[cloudAndUsers.Count - 1];
             lastId++;
-
+            double totalDistance = 0;
+            double numberOfusers = userRequirements.Count;
+            double distperReq = 0.0;
             
 
             foreach (CloudSpecification cloudSpecification in cloudSpecifications)
@@ -55,7 +57,27 @@ namespace VMAllocation.Web.Services
                 Paths = new List<Tuple<int, Connection[]>>();
                 List<int> possibleClouds = Dijkstra(cloudAndUsers, adjacencyMatrix, userRequirement, cloudSpecifications);
 
-                CloudSpecification feasibleCloudSpecification = cloudSpecifications.Where(c => possibleClouds.Contains(c.UniversalId)).OrderByDescending(c => c.RemainCpuCount).FirstOrDefault();
+                //CloudSpecification feasibleCloudSpecification = cloudSpecifications.Where(c => possibleClouds.Contains(c.UniversalId)).
+                //    OrderByDescending(c => c.RemainCpuCount).FirstOrDefault();
+
+                CloudSpecification feasibleCloudSpecification = cloudSpecifications.Where(c => possibleClouds.Contains(c.UniversalId)).
+                    OrderByDescending(c => c.RemainCpuCount).FirstOrDefault();
+
+                double minPath = 100000;
+                int minCloudId = -1;
+                //Selecting Shortest PAth
+                foreach (Tuple<int, Connection[]> path in Paths)
+                {
+                    if (path.Item2.Sum(p => p.Distance) < minPath)
+                    {
+                        minCloudId = path.Item1;
+                        minPath = path.Item2.Sum(p => p.Distance);
+                    }
+                }
+
+                feasibleCloudSpecification = cloudSpecifications.FirstOrDefault(c => c.UniversalId == minCloudId);
+
+
                 if (feasibleCloudSpecification != null)
                 {
                     feasibleCloudSpecification.AllocateUser(userRequirement);
@@ -76,6 +98,7 @@ namespace VMAllocation.Web.Services
                     results.Add($"VM id: {userRequirement.UniversalId} | title: {userRequirement.LocationTitle} " +
                                 $"placed on Cloud Id {feasibleCloudSpecification.UniversalId} | title: {feasibleCloudSpecification.LocationTitle}" +
                                 $" | Via Path: {pathInfo} | Distance: {pathDistance}");
+                    totalDistance += pathDistance;
                 }
                 else
                 {
@@ -84,6 +107,9 @@ namespace VMAllocation.Web.Services
 
                
             }
+
+            distperReq = totalDistance/numberOfusers;
+            results.Add($"AVG DIST PER REQ: {distperReq}");
 
             return results;
         }
@@ -102,8 +128,24 @@ namespace VMAllocation.Web.Services
             {
                 double previousDistance = path.Sum(p => p.Distance);
                 //Find the vertex with smallest distance && with constraints
-                Connection shortestConnection =
-                adjacencyMatrix[source].FirstOrDefault(m => m != null && m.RemainBandwidth >= userRequirement.BandwidthThreshold && (m.Distance + previousDistance <= userRequirement.DistanceThreshold));
+                //Connection shortestConnection =
+                //adjacencyMatrix[source].FirstOrDefault(m => m != null && m.RemainBandwidth >= userRequirement.BandwidthThreshold && (m.Distance + previousDistance <= userRequirement.DistanceThreshold));
+
+                Random random = new Random();
+                List<Connection> shortestConnections =
+                    adjacencyMatrix[source].Where(
+                        m =>
+                            m != null && m.RemainBandwidth >= userRequirement.BandwidthThreshold &&
+                            (m.Distance + previousDistance <= userRequirement.DistanceThreshold)).ToList();
+
+                Connection shortestConnection = null;
+                if (shortestConnections.Count > 0)
+                {
+                    double shortestDistance = shortestConnections.Min(c => c.Distance);
+                    shortestConnection = shortestConnections.FirstOrDefault(c => c.Distance == shortestDistance);
+                    shortestConnection = shortestConnections[random.Next(0, shortestConnections.Count)];
+                }
+                    
                 //adjacencyMatrix[source].FirstOrDefault(m => m.RemainBandwidth >= userRequirement.ExternalBandwidth);
 
 
@@ -146,12 +188,6 @@ namespace VMAllocation.Web.Services
                     
                 }
             }
-            
-            
-
-
-
-
             return possibleClouds;
         }
         

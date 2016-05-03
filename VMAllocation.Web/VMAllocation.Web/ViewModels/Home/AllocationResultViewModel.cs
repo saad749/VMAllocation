@@ -12,5 +12,11 @@ namespace VMAllocation.Web.ViewModels.Home
             
         public List<List<string>> CloudSpecificationDetails { get; set; }
 
+        public List<string> UtilisationPercentage { get; set; }
+        public int CloudsInUse { get; set; }
+        public double DistPerReq { get; set; }
+        public double ReqFullfilledPercentage { get; set; }
+        public long ProcessTime { get; set; }
+
     }
 }

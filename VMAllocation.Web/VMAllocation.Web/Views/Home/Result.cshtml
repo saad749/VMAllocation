@@ -16,13 +16,29 @@
         }       
     </ol>
 </div>
+<hr />
+<div class="row">
+    <p>Clouds In Use: @Model.CloudsInUse</p>
+    <p>Process Time: @Model.ProcessTime Ticks</p>
+    <p>Req FullFilled: @Model.ReqFullfilledPercentage</p>
+</div>
+<hr/>
 
-
+<div class="row">
+    <h4>Utilisation percentage</h4>
+    <ol>
+        @foreach (string result in Model.UtilisationPercentage)
+        {
+            <li>@result</li>
+        }
+    </ol>
+</div>
+<hr />
 <div class="row">
     <h2>Users Requirements</h2>
     @foreach (List<string> userRequirementDetail in Model.UserRequirementDetails)
     {
-        <hr/>
+        <hr />
         <ul>
             @foreach (string req in userRequirementDetail)
             {
@@ -36,7 +52,7 @@
     <h2>Cloud Specifications</h2>
     @foreach (List<string> cloudSpecificationDetail in Model.CloudSpecificationDetails)
     {
-        <hr/>
+        <hr />
         <ul>
             @foreach (string spec in cloudSpecificationDetail)
             {
