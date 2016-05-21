@@ -18,7 +18,8 @@ namespace VMAllocation.Web.Models
 
         public List<UserCloudAllocation> UtilizingAllocations { get; set; }
 
-        public bool Visited { get; set; }   
+        public bool Visited { get; set; }
 
+        public string ReadablePath => $"{StartPointId} <--> {EndPointId}";
     }
 }

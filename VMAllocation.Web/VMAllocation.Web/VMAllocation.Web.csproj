@@ -178,6 +178,8 @@
     </Compile>
     <Compile Include="Models\CloudSpecification.cs" />
     <Compile Include="Models\Connection.cs" />
+    <Compile Include="Models\DataStructure\Tree.cs" />
+    <Compile Include="Models\DataStructure\TreeNode.cs" />
     <Compile Include="Models\UserCloudAllocation.cs" />
     <Compile Include="Models\UserRequirement.cs" />
     <Compile Include="Services\IAllocation.cs" />

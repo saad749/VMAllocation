@@ -2,9 +2,6 @@
 @{
     ViewBag.Title = "Result";
 }
-
-<h2>@ViewBag.Title</h2>
-
 <div class="row">
     <h1 class="text-success">Congratulations! Result Processed Successfully!</h1>
 </div>
@@ -12,15 +9,16 @@
     <ol>
         @foreach (string result in Model.Results)   
         {
-            <li>@result</li>
+            <li style="white-space: pre-wrap;">@result</li>
         }       
     </ol>
 </div>
 <hr />
 <div class="row">
     <p>Clouds In Use: @Model.CloudsInUse</p>
-    <p>Process Time: @Model.ProcessTime Ticks</p>
-    <p>Req FullFilled: @Model.ReqFullfilledPercentage</p>
+    <p>Process Time: @(Model.ProcessTime/10000) ms</p>
+    <p>Req FullFilled: @Model.ReqFullfilledPercentage %</p>
+    <p>Average Distance Per Request: @Math.Round(Model.AverageDistancePerRequest,2)</p>
 </div>
 <hr/>
 

@@ -17,6 +17,6 @@ namespace VMAllocation.Web.ViewModels.Home
         public double DistPerReq { get; set; }
         public double ReqFullfilledPercentage { get; set; }
         public long ProcessTime { get; set; }
-
+        public double AverageDistancePerRequest { get; set; }   
     }
 }

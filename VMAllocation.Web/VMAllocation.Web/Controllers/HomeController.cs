@@ -67,7 +67,7 @@ namespace VMAllocation.Web.Controllers
             }
 
             viewModel.Results = results;
-
+            viewModel.AverageDistancePerRequest = allocationModel.AverageDistancePerRequest;
             viewModel.UtilisationPercentage = new List<string>();
             foreach (CloudSpecification cloudSpecification in specificationModel.CloudSpecifications)
             {

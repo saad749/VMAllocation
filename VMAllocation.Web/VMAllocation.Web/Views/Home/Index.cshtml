@@ -53,15 +53,15 @@
                 <form id="commonForm">
                     <div class="form-group">
                         <label for="cpuCount">CPU Count</label>
-                        <input type="text" class="form-control" id="cpuCount" placeholder="CPU Count" value="10000">
+                        <input type="text" class="form-control" id="cpuCount" placeholder="CPU Count" value="100">
                     </div>
                     <div class="form-group">
                         <label for="memorySize">Memory Size (GB)</label>
-                        <input type="text" class="form-control" id="memorySize" placeholder="Memory Size (GB)" value="160000">
+                        <input type="text" class="form-control" id="memorySize" placeholder="Memory Size (GB)" value="100">
                     </div>
                     <div class="form-group">
                         <label for="networkBandwidth">Network Bandwidth (MB/sec)</label>
-                        <input type="text" class="form-control" id="networkBandwidth" placeholder="Network Bandwidth (MB/sec)" value="1000">
+                        <input type="text" class="form-control" id="networkBandwidth" placeholder="Network Bandwidth (MB/sec)" value="100">
                     </div>
                     
                 </form>
@@ -73,22 +73,22 @@
                     </div>
                     <div class="form-group">
                         <label for="memoryCost">Memory Unit Cost Per Hour (QAR)</label>
-                        <input type="text" class="form-control" id="memoryCost" placeholder="Memory Unit Cost Per Hour">
+                        <input type="text" class="form-control" id="memoryCost" placeholder="Memory Unit Cost Per Hour (QAR)">
                     </div>
                     <div class="form-group">
                         <label for="networkCost">Network Unit Cost Per Hour (QAR)</label>
-                        <input type="text" class="form-control" id="networkCost" placeholder="Network Unit Cost Per Hour">
+                        <input type="text" class="form-control" id="networkCost" placeholder="Network Unit Cost Per Hour (QAR)">
                     </div>
                 </form>
                 <!--User Thresholds-->
                 <form id="thresholdForm">
                     <div class="form-group">
                         <label for="distanceThreshold">Distance Threshold (km)</label>
-                        <input type="text" class="form-control" id="distanceThreshold" placeholder="Distance Threshold (km)" >
+                        <input type="text" class="form-control" id="distanceThreshold" placeholder="Distance Threshold (km)" value="10000">
                     </div>
                     <div class="form-group">
                         <label for="costThreshold">Cost Threshold (QAR)</label>
-                        <input type="text" class="form-control" id="costThreshold" placeholder="Cost Threshold (QAR)">
+                        <input type="text" class="form-control" id="costThreshold" placeholder="Cost Threshold (QAR)" value="30000">
                     </div>
                     <div class="form-group">
                         <label for="externalNetworkBandwidth">Link Bandwidth Threshold (MB/sec)</label>
@@ -125,7 +125,7 @@
                     </div>
                     <div class="form-group">
                         <label for="linkBandwidth">Link Bandwidth (MB/sec)</label>
-                        <input type="text" class="form-control" id="linkBandwidth" placeholder="Link Bandwidth (MB/sec)">
+                        <input type="text" class="form-control" id="linkBandwidth" placeholder="Link Bandwidth (MB/sec)" value="1000">
                     </div>
                 </form>
             </div>
@@ -265,16 +265,7 @@
             //}
 
 
-            $('#locationTitle').val(null);
-            $('#cpuCount').val(10000);
-            $('#cpuCost').val(null);
-            $('#memorySize').val(160000);
-            $('#memoryCost').val(null);
-            $('#networkBandwidth').val(1000);
-            $('#networkCost').val(null);
-            $('#distanceThreshold').val(null);
-            $('#costThreshold').val(null);
-            $('#externalNetworkBandwidth').val(null);
+            setDefaultValues(locationType);
 
             var values;
             if (locationType === "user") {
@@ -531,10 +522,12 @@
                 if ($(this).val() === "user") {
                     $('#cloudForm').hide();
                     $('#thresholdForm').show();
+                    setDefaultValues($(this).val());
                 }
                 if ($(this).val() === "cloud") {
                     $('#cloudForm').show();
                     $('#thresholdForm').hide();
+                    setDefaultValues($(this).val());
                 }
             });
         });
@@ -782,6 +775,33 @@
 
             $('#hidModel').val(JSON.stringify(model));
 
+        }
+
+        function setDefaultValues(optionSelected) {
+            if (optionSelected === "user") {
+                $('#locationTitle').val("user" + universalIdCounter);
+                $('#cpuCount').val(100);
+                $('#cpuCost').val(null);
+                $('#memorySize').val(100);
+                $('#memoryCost').val(null);
+                $('#networkBandwidth').val(100);
+                $('#networkCost').val(null);
+                $('#distanceThreshold').val(10000);
+                $('#costThreshold').val(30000);
+                $('#externalNetworkBandwidth').val(100);
+            }
+            if (optionSelected === "cloud") {
+                $('#locationTitle').val("cloud" + universalIdCounter);
+                $('#cpuCount').val(1000);
+                $('#cpuCost').val(1);
+                $('#memorySize').val(1000);
+                $('#memoryCost').val(1);
+                $('#networkBandwidth').val(1000);
+                $('#networkCost').val(1);
+                $('#distanceThreshold').val(null);
+                $('#costThreshold').val(null);
+                $('#externalNetworkBandwidth').val(null);
+            }
         }
     </script>
     <script src="http://maps.googleapis.com/maps/api/js?v=3&key=AIzaSyCv1wLOZxBKqjcE0oqmny3SZ3NWn45oCW8&libraries=geometry&callback=initMap"></script>
