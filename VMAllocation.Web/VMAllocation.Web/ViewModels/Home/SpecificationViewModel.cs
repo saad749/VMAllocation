@@ -12,5 +12,6 @@ namespace VMAllocation.Web.ViewModels.Home
         public List<CloudSpecification> CloudSpecifications { get; set; }
         public List<UserRequirement> UserRequirements { get; set; }
         public List<Connection> Connections { get; set; }
+        public bool Naive { get; set; }
     }
 }

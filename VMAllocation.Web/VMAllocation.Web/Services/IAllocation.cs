@@ -9,7 +9,7 @@ namespace VMAllocation.Web.Services
 {
     public interface IAllocation
     {
-        void Allocate(List<CloudSpecification> cloudSpecifications, List<UserRequirement> userRequirements, List<Connection> connections);
+        void Allocate(List<CloudSpecification> cloudSpecifications, List<UserRequirement> userRequirements, List<Connection> connections, bool naive);
         double AverageDistancePerRequest { get; set; }
         List<AllocationResult> AllocationResults { get; set; }
     }

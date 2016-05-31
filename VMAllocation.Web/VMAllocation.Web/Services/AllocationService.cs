@@ -22,7 +22,7 @@ namespace VMAllocation.Web.Services
 
 
         public void Allocate(List<CloudSpecification> cloudSpecifications,
-            List<UserRequirement> userRequirements, List<Connection> connections)
+            List<UserRequirement> userRequirements, List<Connection> connections, bool naive)
         {
             AllocationResults = new List<AllocationResult>();
             //_results = new List<string>();
@@ -40,7 +40,10 @@ namespace VMAllocation.Web.Services
 
             foreach (UserRequirement userRequirement in userRequirements)
             {
-                AllocateCloud(userRequirement, cloudSpecifications, connections, cloudAndUsers);
+                if(!naive)
+                    AllocateCloud(userRequirement, cloudSpecifications, connections, cloudAndUsers);
+                else
+                    AllocateCloudNaive(userRequirement, cloudSpecifications, connections, cloudAndUsers);
             }
 
             AverageDistancePerRequest = _totalDistance / userRequirements.Count;
@@ -48,7 +51,86 @@ namespace VMAllocation.Web.Services
             //return _results;
         }
 
+        private void AllocateCloudNaive(UserRequirement userRequirement, List<CloudSpecification> cloudSpecifications,
+            List<Connection> connections, List<int> cloudAndUsers)
+        {
+            _paths = new List<Path>();
+            ResetTempValues(cloudSpecifications, connections);
+            Connection[][] adjacencyMatrix = GetAdjacencyMatrix(cloudAndUsers, connections);
+            List<int> feasibleCloudSpecificationIds = FindPossibleCloudsByNaiveBFS(cloudAndUsers, adjacencyMatrix, userRequirement, cloudSpecifications);
 
+            List<CloudSpecification> feasibleCloudSpecifications =
+                cloudSpecifications.Where(c => feasibleCloudSpecificationIds.Contains(c.UniversalId)).ToList();
+            CloudSpecification feasibleCloudSpecification = cloudSpecifications.Where(c => feasibleCloudSpecificationIds.Contains(c.UniversalId)).
+                    OrderByDescending(c => c.RemainCpuCount).FirstOrDefault();
+
+            double minPath = 100000;
+            int minCloudId = -1;
+            //Selecting Shortest PAth
+            foreach (Path path in _paths)
+            {
+                if (path.Connections.Sum(p => p.Distance) < minPath)
+                {
+                    minCloudId = path.CloudId;
+                    minPath = path.Connections.Sum(p => p.Distance);
+                }
+            }
+
+            foreach (CloudSpecification cloudSpecification in feasibleCloudSpecifications)
+            {
+                cloudSpecification.TemporaryPathDistance =
+                    _paths.Where(p => p.CloudId == cloudSpecification.UniversalId).Min(p => p.Distance);
+            }
+
+            feasibleCloudSpecification = cloudSpecifications.FirstOrDefault(c => c.UniversalId == minCloudId);
+
+
+            if (feasibleCloudSpecification != null)
+            {
+                feasibleCloudSpecification.AllocateUser(userRequirement);
+
+                string pathInfo = "";
+                double pathDistance = 0.0;
+                foreach (Connection connection in _paths.FirstOrDefault(p => p.CloudId == feasibleCloudSpecification.UniversalId).Connections)
+                {
+                    pathInfo += $" Endpoints: {connection.StartPointId} <-> {connection.EndPointId} - ";
+                    Connection realConnection =
+                        connections.FirstOrDefault(
+                            c => c.StartPointId == connection.StartPointId && c.EndPointId == connection.EndPointId);
+
+                    realConnection.AllocatedBandwidth += userRequirement.BandwidthThreshold;
+                    pathDistance += connection.Distance;
+                }
+
+                AllocationResult allocationResult = new AllocationResult()
+                {
+                    UserRequirement = userRequirement,
+                    CloudSpecification = feasibleCloudSpecification,
+                    FeasibleAllocations = feasibleCloudSpecifications,
+                    FeasiblePaths = _paths,
+                    Distance = feasibleCloudSpecification.TemporaryPathDistance.Value,// feasiblePaths.Where(p => p.CloudId == feasibleCloudSpecification.UniversalId).Min(p => p.Distance),
+                    //Fitness = feasibleCloudSpecification.TotalFitness.Value,
+                    //InitialAllocationResults = new List<AllocationResult>()
+                };
+                AllocationResults.Add(allocationResult);
+                //results.Add($"VM id: {userRequirement.UniversalId} | title: {userRequirement.LocationTitle} " +
+                //            $"placed on Cloud Id {feasibleCloudSpecification.UniversalId} | title: {feasibleCloudSpecification.LocationTitle}" +
+                //            $" | Via Path: {pathInfo} | Distance: {pathDistance}");
+                _totalDistance += pathDistance;
+            }
+            else
+            {
+                AllocationResult allocationResult = new AllocationResult()
+                {
+                    UserRequirement = userRequirement,
+                    FeasibleAllocations = feasibleCloudSpecifications,
+                    FeasiblePaths = _paths,
+                };
+                //results.Add($"VM id: {userRequirement.UniversalId} cannot be placed on any suitable Cloud!");
+                AllocationResults.Add(allocationResult);
+            }
+
+        }
         private void AllocateCloud(UserRequirement userRequirement, List<CloudSpecification> cloudSpecifications, List<Connection> connections, List<int> cloudAndUsers)
         {
             _paths = new List<Path>();
@@ -58,14 +140,7 @@ namespace VMAllocation.Web.Services
             //CloudSpecification feasibleCloudSpecification = GetFittestCloud(userRequirement, feasibleCloudSpecifications);
             
 
-            if (AllocateToCloud(userRequirement, feasibleCloudSpecifications, _paths, false, null))
-            {
-                
-                //string possibleChoices = string.Join(", ", feasibleCloudSpecifications.Select(c => c.UniversalId));
-                //string allPaths = GetAllPathsAsString(feasibleCloudSpecifications);
-                //AllocateCloudToUser(userRequirement, feasibleCloudSpecification, connections, possibleChoices, allPaths);
-            }
-            else
+            if (!AllocateToCloud(userRequirement, feasibleCloudSpecifications, _paths, false, null))
             {
                 //Migration Phase:
                 foreach (CloudSpecification cloudSpecification in feasibleCloudSpecifications)
@@ -126,6 +201,11 @@ namespace VMAllocation.Web.Services
 
         private bool AllocateToCloud(UserRequirement userRequirement, List<CloudSpecification> feasibleCloudSpecifications, List<Path> feasiblePaths, bool isMigration, List<AllocationResult> previousAllocationResults )
         {
+            foreach (CloudSpecification cloudSpecification in feasibleCloudSpecifications)
+            {
+                cloudSpecification.TemporaryPathDistance =
+                    feasiblePaths.Where(p => p.CloudId == cloudSpecification.UniversalId).Min(p => p.Connections.Sum(c => c.Distance));
+            }
             CloudSpecification feasibleCloudSpecification = GetFittestCloud(userRequirement, feasibleCloudSpecifications);
             if (feasibleCloudSpecification == null)
                 return false;
@@ -136,7 +216,7 @@ namespace VMAllocation.Web.Services
                 CloudSpecification = feasibleCloudSpecification,
                 FeasibleAllocations = feasibleCloudSpecifications,
                 FeasiblePaths = feasiblePaths,
-                Distance = feasiblePaths.Where(p => p.CloudId == feasibleCloudSpecification.UniversalId).Min(p => p.Distance),
+                Distance = feasibleCloudSpecification.TemporaryPathDistance.Value,// feasiblePaths.Where(p => p.CloudId == feasibleCloudSpecification.UniversalId).Min(p => p.Distance),
                 Fitness = feasibleCloudSpecification.TotalFitness.Value,
                 InitialAllocationResults = new List<AllocationResult>()
             };
@@ -238,10 +318,12 @@ namespace VMAllocation.Web.Services
             foreach (CloudSpecification cloudSpecification in feasibleCloudSpecifications)
             {
                 cloudSpecification.CalculateTotalFitness(userRequirement);
-                if (cloudSpecification.TotalFitness.HasValue && cloudSpecification.TotalFitness > bestFitnessRatio && cloudSpecification.TotalFitness <= 1)
+                if (cloudSpecification.TotalFitness.HasValue && cloudSpecification.TotalFitness > bestFitnessRatio && cloudSpecification.TotalFitness <= 1
+                    && cloudSpecification.CalculateCost(userRequirement) <= userRequirement.CostThreshold && cloudSpecification.TemporaryPathDistance <= userRequirement.DistanceThreshold)
                 {
                     bestFitnessRatio = cloudSpecification.TotalFitness.Value;
                     bestFitCloud = cloudSpecification;
+                    _totalDistance += cloudSpecification.TemporaryPathDistance.Value;
                 }
             }
             return bestFitCloud;
@@ -308,6 +390,89 @@ namespace VMAllocation.Web.Services
             return possibleClouds;
         }
 
+
+        public List<int> FindPossibleCloudsByNaiveBFS(List<int> cloudAndUsers, Connection[][] adjacencyMatrix, UserRequirement userRequirement, List<CloudSpecification> cloudSpecifications)
+        {
+            int source = userRequirement.UniversalId;
+            List<int> possibleClouds = new List<int>();
+            List<int> tempCloudAndUsers = new List<int>(cloudAndUsers);
+
+            List<Connection> path = new List<Connection>();
+
+
+            while (tempCloudAndUsers.Count > 0)
+            {
+                double previousDistance = path.Sum(p => p.Distance);
+                //Find the vertex with smallest distance && with constraints
+                //Connection shortestConnection =
+                //adjacencyMatrix[source].FirstOrDefault(m => m != null && m.RemainBandwidth >= userRequirement.BandwidthThreshold && (m.Distance + previousDistance <= userRequirement.DistanceThreshold));
+
+                Random random = new Random();
+                List<Connection> shortestConnections =
+                    adjacencyMatrix[source].Where(
+                        m =>
+                            m != null && m.RemainBandwidth >= userRequirement.BandwidthThreshold &&
+                            (m.Distance + previousDistance <= userRequirement.DistanceThreshold)).ToList();
+
+                Connection shortestConnection = null;
+                if (shortestConnections.Count > 0)
+                {
+                    double shortestDistance = shortestConnections.Min(c => c.Distance);
+                    shortestConnection = shortestConnections.FirstOrDefault(c => c.Distance == shortestDistance);
+                    shortestConnection = shortestConnections[random.Next(0, shortestConnections.Count)];
+                }
+
+                //adjacencyMatrix[source].FirstOrDefault(m => m.RemainBandwidth >= userRequirement.ExternalBandwidth);
+
+
+                if (shortestConnection != null)
+                {
+                    path.Add(shortestConnection);
+                    //Just something due to the nature of implementation
+                    int shortestPathId = shortestConnection.StartPointId == source
+                        ? shortestConnection.EndPointId
+                        : shortestConnection.StartPointId;
+
+                    //Is it a cloud?
+                    CloudSpecification possibleCloud = cloudSpecifications.FirstOrDefault(c => c.UniversalId == shortestPathId
+                                                        && c.RemainCpuCount >= userRequirement.CpuCount && c.RemainMemorySize >= userRequirement.MemorySize
+                                                        && c.NetworkBandwidth >= userRequirement.NetworkBandwidth
+                                                        && c.CalculateCost(userRequirement) <= userRequirement.CostThreshold);
+                    if (possibleCloud != null)
+                    {
+                        Path _path = new Path()
+                        {
+                            Id = possibleCloud.UniversalId,
+                            CloudId = possibleCloud.UniversalId,
+                            Connections = path.ToArray(),
+                            Distance = path.Sum(d => d.Distance)
+                        };
+                        _paths.Add(_path);
+                        possibleClouds.Add(possibleCloud.UniversalId);
+                    }
+                    //Remove from cloudAndUsers
+                    tempCloudAndUsers.Remove(shortestPathId);
+                    //Remove this vertex from the set. Possibly to disallow cycles?
+                    adjacencyMatrix[source][shortestPathId] = null;
+                    adjacencyMatrix[shortestPathId][source] = null;
+
+                    source = shortestPathId;
+                }
+                else
+                {
+                    path.Clear();
+                    source = userRequirement.UniversalId;
+                    Connection availableConnection =
+                        adjacencyMatrix[source].FirstOrDefault(m => m != null && m.RemainBandwidth >= userRequirement.BandwidthThreshold && (m.Distance + previousDistance <= userRequirement.DistanceThreshold));
+                    if (availableConnection == null)
+                    {
+                        break;
+                    }
+
+                }
+            }
+            return possibleClouds;
+        }
     }
 
     public class Path : ICloneable
@@ -315,7 +480,7 @@ namespace VMAllocation.Web.Services
         public int Id { get; set; }
         public int CloudId { get; set; }
         public Connection[] Connections { get; set; }
-        public double Distance { get; set; }
+        public double? Distance { get; set; }
 
         public object Clone()
         {

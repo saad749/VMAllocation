@@ -16,6 +16,7 @@ namespace VMAllocation.Web.ViewModels.Home
 
         public int CloudsInUse { get; set; }
         public double DistPerReq { get; set; }
+        public int RequestFullfilledCount { get; set; }
         public double ReqFullfilledPercentage { get; set; }
         public long ProcessTime { get; set; }
         public double AverageDistancePerRequest { get; set; }   

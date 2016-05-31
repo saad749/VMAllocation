@@ -74,18 +74,16 @@ namespace VMAllocation.Web.Services
                 ResultString = $"VM {UserRequirement.UniversalId} | {UserRequirement.LocationTitle} ({UserRequirement.CpuCount},{UserRequirement.MemorySize},{UserRequirement.NetworkBandwidth}) {Environment.NewLine}" +
                                $"Placed on Cloud {CloudSpecification.UniversalId} | {CloudSpecification.LocationTitle} ({CloudSpecification.CpuCount},{CloudSpecification.MemorySize},{CloudSpecification.NetworkBandwidth}) {Environment.NewLine}" +
                                $"Via Path: {GetAllocatedPathAsString()} {Environment.NewLine}" +
-                               $"Distance: {Math.Round(Distance, 2)} {Environment.NewLine}" +
+                               //$"Distance: {Math.Round(Distance, 2)} {Environment.NewLine}" +
                                $"Total Fitness: {Fitness} {Environment.NewLine}" +
                                $"Possible choices [{string.Join(", ", FeasibleAllocations.Select(c => c.UniversalId))}] {Environment.NewLine}" +
                                $"Possible paths {Environment.NewLine}{GetAllPathsAsString()}";
             }
             else
             {
-                ResultString = $"VM {UserRequirement.UniversalId} | {UserRequirement.LocationTitle}" +
+                ResultString = $"VM {UserRequirement.UniversalId} | {UserRequirement.LocationTitle} ({UserRequirement.CpuCount},{UserRequirement.MemorySize}," +
+                               $"{UserRequirement.NetworkBandwidth},{UserRequirement.DistanceThreshold},{UserRequirement.CostThreshold}) {Environment.NewLine}" +
                                $"cannot be placed on any suitable Cloud! {Environment.NewLine}" +
-                               //$"Via Path: {GetAllocatedPathAsString()} {Environment.NewLine}" +
-                               //$"Distance: {Math.Round(Distance, 2)} {Environment.NewLine}" +
-                               //$"Total Fitness: {Fitness} {Environment.NewLine}" +
                                $"Possible choices [{string.Join(", ", FeasibleAllocations.Select(c => c.UniversalId))}] {Environment.NewLine}" +
                                $"Possible paths {Environment.NewLine}{GetAllPathsAsString()}";
             }
@@ -95,7 +93,7 @@ namespace VMAllocation.Web.Services
 
         private string GetAllocatedPathAsString()
         {
-            foreach (Connection connection in FeasiblePaths.FirstOrDefault(p => p.CloudId == CloudSpecification.UniversalId && p.Distance == Distance).Connections)
+            foreach (Connection connection in FeasiblePaths.FirstOrDefault(p => p.CloudId == CloudSpecification.UniversalId && p.Connections.Sum(c => c.Distance) == Distance).Connections)
             {
                 AllocatedPathString += $" {connection.StartPointId} <--> {connection.EndPointId} - ";
             }
@@ -108,11 +106,12 @@ namespace VMAllocation.Web.Services
             //string allPaths = "";
             foreach (Path path in FeasiblePaths)
             {
+                CloudSpecification tempCloud = FeasibleAllocations.FirstOrDefault(f => f.UniversalId == path.CloudId);
                 path.Distance = path.Connections.Sum(p => p.Distance);
                 FeasiblePathsString += $"Cloud: {path.CloudId}:  " + string.Join(" | ", path.Connections.Select(p => p.ReadablePath)) +
-                            $"   --- Distance: {Math.Round(path.Distance, 2)}  {Environment.NewLine}";
+                            $"   --- Distance: {Math.Round(path.Distance.Value, 2)}, --- Cost: {tempCloud.CalculateCost(UserRequirement)}  {Environment.NewLine}";
 
-                CloudSpecification tempCloud = FeasibleAllocations.FirstOrDefault(f => f.UniversalId == path.CloudId);
+                
                 if (tempCloud.TemporaryPathDistance == null || tempCloud.TemporaryPathDistance > path.Distance)
                     tempCloud.TemporaryPathDistance = path.Distance;
 

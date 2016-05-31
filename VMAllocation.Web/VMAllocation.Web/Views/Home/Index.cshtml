@@ -15,7 +15,8 @@
             <input type="hidden" name="Connections" id="hidConnections"/>*@
             <input type="hidden" name="model" id="hidModel" />
             <button class="btn btn-danger" onclick="resetMap();" type="button">Clear Local Storage</button>
-            <button class="btn btn-success" onclick="sendData();" type="submit">Process Topology</button>
+            <button class="btn btn-success" onclick="sendData();" type="submit">Process Novel Algo</button>
+            <button class="btn btn-primary" onclick="sendDataNaive();" type="submit">Process Naive Algo</button>
         }
         
     </div>
@@ -770,6 +771,29 @@
                 CloudSpecifications: cloudSpecifications,
                 UserRequirements: userRequirements,
                 Connections: connections
+            };
+
+            console.log("Model: ", model);
+            localStorage.setItem("Model", JSON.stringify(model));
+
+            $('#hidModel').val(JSON.stringify(model));
+
+        }
+
+        function sendDataNaive() {
+            var cloudSpecifications = JSON.parse(localStorage.getItem("cloudSpecifications"));
+            var userRequirements = JSON.parse(localStorage.getItem("userRequirements"));
+            var connections = JSON.parse(localStorage.getItem("connections"));
+
+            //$('#hidCloudSpecifications').val(cloudSpecifications);
+            //$('#hidUserRequirements').val(userRequirements);
+            //$('#hidConnections').val(connections);
+
+            var model = {
+                CloudSpecifications: cloudSpecifications,
+                UserRequirements: userRequirements,
+                Connections: connections,
+                Naive: true
             };
 
             console.log("Model: ", model);

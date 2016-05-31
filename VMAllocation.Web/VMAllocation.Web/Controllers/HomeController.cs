@@ -44,7 +44,7 @@ namespace VMAllocation.Web.Controllers
             IAllocation allocationModel = new AllocationService();
             //List<string> results =  
                 allocationModel.Allocate(specificationModel.CloudSpecifications, specificationModel.UserRequirements,
-                specificationModel.Connections);
+                specificationModel.Connections, specificationModel.Naive);
             stopwatch.Stop();
             viewModel.ProcessTime = stopwatch.ElapsedTicks;
             Console.WriteLine("Success");
@@ -53,12 +53,13 @@ namespace VMAllocation.Web.Controllers
             foreach (UserRequirement userRequirement in specificationModel.UserRequirements)
             {
                 viewModel.UserRequirementDetails.Add(PrintDetails(userRequirement));
-                if (userRequirement.Allocated == true)
+                if (userRequirement.Allocated)
                 {
                     reqFullfilled++;
                 }
                 
             }
+            viewModel.RequestFullfilledCount = reqFullfilled;
             viewModel.ReqFullfilledPercentage = ((double)reqFullfilled/ (double)specificationModel.UserRequirements.Count)* (double)100;
 
             viewModel.CloudSpecificationDetails = new List<List<string>>();

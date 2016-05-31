@@ -18,7 +18,8 @@
     <p>Total Clouds: @Model.CloudSpecificationDetails.Count </p>
     <p>Clouds In Use: @Model.CloudsInUse</p>
     <p>Total Requests: @Model.UserRequirementDetails.Count </p>
-    <p>Req FullFilled: @Model.ReqFullfilledPercentage %</p>
+    <p>Req Fullfilled: @Model.RequestFullfilledCount</p>
+    <p>Req FullFilled %: @Model.ReqFullfilledPercentage %</p>
     <p>Average Distance Per Request: @Math.Round(Model.AverageDistancePerRequest, 2)</p>
     <p>Process Time: @(Model.ProcessTime / 10000) ms</p>
 </div>
