@@ -78,6 +78,16 @@ namespace VMAllocation.Web.Services
                                $"Total Fitness: {Fitness} {Environment.NewLine}" +
                                $"Possible choices [{string.Join(", ", FeasibleAllocations.Select(c => c.UniversalId))}] {Environment.NewLine}" +
                                $"Possible paths {Environment.NewLine}{GetAllPathsAsString()}";
+                if (MigrationCount > 0)
+                {
+                    int? intiialId = InitialAllocationResults.FirstOrDefault().CloudSpecification.UniversalId;
+                    if (intiialId.HasValue)
+                    {
+                        ResultString += $"---Migration Count: {MigrationCount} {Environment.NewLine}" +
+                        $"---Initial Cloud Id: {intiialId.Value}{Environment.NewLine}";
+                    }
+                    
+                }
             }
             else
             {
