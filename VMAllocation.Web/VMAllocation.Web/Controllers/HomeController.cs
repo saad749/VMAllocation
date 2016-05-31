@@ -41,8 +41,9 @@ namespace VMAllocation.Web.Controllers
             SpecificationViewModel specificationModel = JsonConvert.DeserializeObject<SpecificationViewModel>(model);
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            IAllocation allocationModel = new LoadBalancedAllocationService();
-            List<string> results =  allocationModel.Allocate(specificationModel.CloudSpecifications, specificationModel.UserRequirements,
+            IAllocation allocationModel = new AllocationService();
+            //List<string> results =  
+                allocationModel.Allocate(specificationModel.CloudSpecifications, specificationModel.UserRequirements,
                 specificationModel.Connections);
             stopwatch.Stop();
             viewModel.ProcessTime = stopwatch.ElapsedTicks;
@@ -66,7 +67,7 @@ namespace VMAllocation.Web.Controllers
                 viewModel.CloudSpecificationDetails.Add(PrintDetails(cloudSpecification));
             }
 
-            viewModel.Results = results;
+            viewModel.Results = allocationModel.AllocationResults.Select(r => r.GetResultString()).ToList();
             viewModel.AverageDistancePerRequest = allocationModel.AverageDistancePerRequest;
             viewModel.UtilisationPercentage = new List<string>();
             foreach (CloudSpecification cloudSpecification in specificationModel.CloudSpecifications)

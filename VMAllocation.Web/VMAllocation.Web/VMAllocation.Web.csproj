@@ -180,10 +180,14 @@
     <Compile Include="Models\Connection.cs" />
     <Compile Include="Models\DataStructure\Tree.cs" />
     <Compile Include="Models\DataStructure\TreeNode.cs" />
+    <Compile Include="Models\ISpec.cs" />
+    <Compile Include="Models\SimilarityRatio.cs" />
     <Compile Include="Models\UserCloudAllocation.cs" />
     <Compile Include="Models\UserRequirement.cs" />
+    <Compile Include="Services\AllocationResult.cs" />
+    <Compile Include="Services\DeepCloneService.cs" />
     <Compile Include="Services\IAllocation.cs" />
-    <Compile Include="Services\LoadBalancedAllocationService.cs" />
+    <Compile Include="Services\AllocationService.cs" />
     <Compile Include="ViewModels\Account\ExternalLoginConfirmationViewModel.cs" />
     <Compile Include="ViewModels\Home\AllocationResultViewModel.cs" />
     <Compile Include="ViewModels\Home\SpecificationViewModel.cs" />

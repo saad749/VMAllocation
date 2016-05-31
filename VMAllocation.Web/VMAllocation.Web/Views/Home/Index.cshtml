@@ -328,12 +328,14 @@
         }
 
         function setMarker(values) {
+            var labels = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
             console.log("settingMarker", values);
             var marker = new google.maps.Marker({
                 position: values.location,
                 //position: event.latLng,
                 map: map,
-                title: values.locationTitle + " | " + values.universalId
+                title: values.locationTitle + " | " + values.universalId,
+                label: labels[values.universalId]
             });
 
             var dataCenterSizeCircle = new google.maps.Circle({

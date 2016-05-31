@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace VMAllocation.Web.Models
 {
-    public class CloudSpecification
+    public class CloudSpecification : ISpec
     {
         public int UniversalId { get; set; }
         public string LocationTitle { get; set; }
@@ -34,6 +34,12 @@ namespace VMAllocation.Web.Models
 
         public double? TotalFitness { get; set; }
 
+        public double CpuFitnessRatioRelaxed { get; set; }
+        public double MemoryFitnessRatioRelaxed { get; set; }
+        public double NetworkFitnessRatioRelaxed { get; set; }
+
+        public double? TotalFitnessRelaxed { get; set; }
+
         public double? TemporaryPathDistance { get; set; }
 
 
@@ -53,6 +59,19 @@ namespace VMAllocation.Web.Models
             return false;
         }
 
+        public bool DeAllocateUser(UserRequirement userRequirement)
+        {
+            AllocatedCpuCount -= userRequirement.CpuCount;
+            AllocatedMemorySize -= userRequirement.MemorySize;
+            AllocatedNetworkBandwidth -= userRequirement.NetworkBandwidth;
+
+            AllocatedUserRequirements.Remove(userRequirement);
+            userRequirement.Allocated = false;
+            userRequirement.AllocatedCloud = null;
+
+            return false;
+        }
+
         public double CalculateCost(UserRequirement userRequirement)
         {
             return ((userRequirement.CpuCount * CpuCost) + (userRequirement.MemorySize * MemoryCost) + (userRequirement.NetworkBandwidth * NetworkCost));
@@ -63,6 +82,10 @@ namespace VMAllocation.Web.Models
             CpuFitnessRatio = userRequirement.CpuCount/RemainCpuCount;
             MemoryFitnessRatio = userRequirement.MemorySize/RemainMemorySize;
             NetworkFitnessRatio = userRequirement.NetworkBandwidth/RemainNetworkBandwidth;
+
+            CpuFitnessRatioRelaxed = userRequirement.CpuCount / CpuCount;
+            MemoryFitnessRatioRelaxed = userRequirement.MemorySize / MemorySize;
+            NetworkFitnessRatioRelaxed = userRequirement.NetworkBandwidth / NetworkBandwidth;
         }
 
         public void CalculateTotalFitness(UserRequirement userRequirement)
@@ -75,6 +98,15 @@ namespace VMAllocation.Web.Models
             else
             {
                 TotalFitness = null;
+            }
+
+            if (CpuFitnessRatioRelaxed <= 1 && MemoryFitnessRatioRelaxed <= 1 && NetworkFitnessRatioRelaxed <= 1)
+            {
+                TotalFitnessRelaxed = CpuFitnessRatioRelaxed * MemoryFitnessRatioRelaxed * NetworkFitnessRatioRelaxed;
+            }
+            else
+            {
+                TotalFitnessRelaxed = null;
             }
         }
     }

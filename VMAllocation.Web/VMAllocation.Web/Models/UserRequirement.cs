@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using VMAllocation.Web.Services;
 
 namespace VMAllocation.Web.Models
 {
-    public class UserRequirement
+    public class UserRequirement : ISpec
     {
         public int UniversalId { get; set; }
         public string LocationTitle { get; set; }
@@ -22,6 +23,10 @@ namespace VMAllocation.Web.Models
         public double BandwidthThreshold => ExternalNetworkBandwidth;
 
         public bool Allocated { get; set; }
-        public CloudSpecification AllocatedCloud { get; set; }  
+        public CloudSpecification AllocatedCloud { get; set; }
+
+
+        public AllocationResult AllocationResult { get; set; }
+        
     }
 }
